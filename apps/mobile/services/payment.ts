@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../shared/utils/logging/logger';
 
 const CHAPA_CONFIG = {
   baseUrl: 'https://api.chapa.co/v1',
@@ -61,8 +62,8 @@ class PaymentService {
     try {
       const response = await this.axiosInstance.post('/transaction/initialize', paymentData);
       return response.data;
-    } catch (error) {
-      console.error('Payment initialization error:', error);
+    } catch (error: any) {
+      try { logger.error('Payment initialization error', error); } catch { try { console.error(`Payment initialization error: ${error?.message || error}`); } catch {} }
       throw new Error('Failed to initialize payment');
     }
   }
@@ -71,8 +72,8 @@ class PaymentService {
     try {
       const response = await this.axiosInstance.get(`/transaction/verify/${transactionRef}`);
       return response.data;
-    } catch (error) {
-      console.error('Payment verification error:', error);
+    } catch (error: any) {
+      try { logger.error('Payment verification error', error); } catch { try { console.error(`Payment verification error: ${error?.message || error}`); } catch {} }
       throw new Error('Failed to verify payment');
     }
   }
@@ -86,8 +87,8 @@ class PaymentService {
         tx_ref: `WIA-${Date.now()}`,
       });
       return response.data;
-    } catch (error) {
-      console.error('Mobile payment error:', error);
+    } catch (error: any) {
+      try { logger.error('Mobile payment error', error); } catch { try { console.error(`Mobile payment error: ${error?.message || error}`); } catch {} }
       throw new Error('Failed to create mobile payment');
     }
   }

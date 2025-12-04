@@ -18,7 +18,8 @@ declare global {
       onboarding: undefined;
       login: undefined;
       register: undefined;
-      '(tabs)': undefined;
+      '(app)/(tabs)': undefined;
+      '(auth)': undefined;
       modal: undefined;
       splash: undefined;
       '_sitemap': undefined;

@@ -6,8 +6,22 @@ export interface User {
   email: string;
   phone: string;
   avatar?: string;
+  role?: 'TOURIST';
   createdAt: string;
+  profile?: Profile;
 }
+export interface Profile {
+  id: string;
+  userId: string;
+  name?: string;
+  gender?: string;
+  phone?: string;
+  country?: string;
+  avatar?: string;
+  locale?: string;
+  dateOfBirth?: string;
+  bio?: string;
+} 
 
 export interface AuthState {
   user: User | null;

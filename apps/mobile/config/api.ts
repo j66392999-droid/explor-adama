@@ -1,5 +1,5 @@
 export const API_CONFIG = {
-  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'https://api.wia.al/v1',
+ baseURL:'http://192.168.8.129:3000',
   TIMEOUT: 10000,
   ENDPOINTS: {
     AUTH: {

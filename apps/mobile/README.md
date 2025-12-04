@@ -16,6 +16,20 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+   ## Using Mock API Data
+
+   To avoid network errors during development you can use built-in mock API data. Set `USE_MOCK_DATA=true` in your `.env.development` to enable mocked API responses.
+
+   The app uses the mocks under `apps/mobile/shared/mocks/data.ts` when mock mode is enabled. Tests still use `__tests__/mocks/data.ts` for test-specific mocks.
+
+   Example:
+
+   ```bash
+   # From apps/mobile
+   export USE_MOCK_DATA=true
+   npx expo start
+   ```
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

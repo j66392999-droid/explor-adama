@@ -1,24 +1,29 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
-import { loginUser, registerUser, logout, fetchProfile } from '../store/authSlice';
+import { loginThunk, registerThunk, logoutThunk, getCurrentUserThunk as fetchProfile } from '../store/slices/auth/auth.thunks';
+import type { RegisterData } from '../features/auth/types/auth.types';
 
 export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
   const auth = useSelector((state: RootState) => state.auth);
 
   const login = (email: string, password: string) => {
-    return dispatch(loginUser({ email, password })).unwrap();
+    return dispatch(loginThunk({ email, password })).unwrap();
   };
 
-  const register = (userData: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    password: string;
-    confirmPassword: string;
-  }) => {
-    return dispatch(registerUser(userData)).unwrap();
+  const register = (userData: Partial<RegisterData>) => {
+    const payload: RegisterData = {
+      firstName: userData.firstName || '',
+      lastName: userData.lastName || '',
+      email: userData.email || '',
+      password: userData.password || '',
+      confirmPassword: userData.confirmPassword || '',
+      phone: userData.phone,
+      acceptTerms: (userData as any).acceptTerms ?? true,
+      acceptPrivacy: (userData as any).acceptPrivacy ?? true,
+      acceptMarketing: (userData as any).acceptMarketing ?? false,
+    };
+    return dispatch(registerThunk(payload)).unwrap();
   };
 
   const getProfile = () => {
@@ -26,7 +31,7 @@ export const useAuth = () => {
   };
 
   const signOut = () => {
-    dispatch(logout());
+    dispatch(logoutThunk());
   };
 
   const updateProfile = (userData: any) => {
@@ -35,7 +40,7 @@ export const useAuth = () => {
 
   return {
     user: auth.user,
-    token: auth.token,
+    token: auth.tokens?.accessToken || null,
     isAuthenticated: auth.isAuthenticated,
     isLoading: auth.isLoading,
     error: auth.error,

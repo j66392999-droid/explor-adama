@@ -1,19 +1,22 @@
-import { Stack } from 'expo-router';
-import { Provider } from 'react-redux';
-import { store } from '../store';
+import React from 'react'
+import { Stack } from 'expo-router'
+import { Provider } from 'react-redux'
+import { store } from '../store'
+import { ThemeProvider } from '@/shared/hooks/ui/useTheme'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
-export default function RootLayout() {
+export default function AppLayout() {
   return (
     <Provider store={store}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="cart" />
-        <Stack.Screen name="services" />
-        <Stack.Screen name="orders" />
-        <Stack.Screen name="blog" />
-        <Stack.Screen name="events" />
-      </Stack>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <Stack screenOptions={{ headerShown: false }}>
+            {/* Root stacks for app area and auth area - use full nested group route paths */}
+            <Stack.Screen name="(app)/(tabs)" />
+            <Stack.Screen name="(auth)" />
+          </Stack>
+        </ThemeProvider>
+      </SafeAreaProvider>
     </Provider>
-  );
+  )
 }

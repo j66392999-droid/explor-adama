@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '../shared/utils/logging/logger';
 import { CONFIG } from '../constants/config';
 
 // Create axios instance with base configuration
@@ -54,7 +55,7 @@ api.interceptors.response.use(
     }
     
     if (error.response?.status === 500) {
-      console.error('Server error:', error);
+      try { logger.error('Server error', error); } catch { try { console.error('Server error:', error); } catch {} }
     }
     
     return Promise.reject(error);
