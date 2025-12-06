@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, FlatList, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import useFavorites from '../hooks/useFavorites';
+import { useHideOnScroll } from '../../../shared/hooks/ui/useBottomTabs';
 import FavoriteButton from '../components/FavoriteButton';
 import SaveToListSheet from '../components/SaveToListSheet';
 import { FavoriteItem } from '../types/favorites.types';
@@ -9,6 +10,8 @@ const FavoritesScreen: React.FC = () => {
 	const { favorites, collections, isLoading, toggle, addToCollection, removeFromCollection } = useFavorites();
 	const [sheetVisible, setSheetVisible] = useState(false);
 	const [selectedItem, setSelectedItem] = useState<FavoriteItem | null>(null);
+
+	const { onScroll, scrollEventThrottle } = useHideOnScroll();
 
 	const handleToggle = (item: FavoriteItem) => {
 		toggle(item);
@@ -42,6 +45,8 @@ const FavoritesScreen: React.FC = () => {
 				)}
 				refreshing={isLoading}
 				onRefresh={() => {}}
+				onScroll={onScroll}
+				scrollEventThrottle={scrollEventThrottle}
 			/>
 			{selectedItem && (
 				<SaveToListSheet

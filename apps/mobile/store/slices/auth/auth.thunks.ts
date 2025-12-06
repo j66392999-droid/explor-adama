@@ -237,6 +237,7 @@ export const checkAuthStatusThunk = createAsyncThunk(
             tokens: {
               accessToken: token,
               refreshToken: await secureStorage.getRefreshToken(),
+              expiresIn: 60 * 60 * 24,
             },
           }));
           

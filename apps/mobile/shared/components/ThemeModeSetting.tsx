@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { JSX } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ThemeMode, useThemeMode, useThemeActions } from '../hooks/ui/useTheme';
 

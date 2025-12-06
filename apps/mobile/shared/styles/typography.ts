@@ -1,4 +1,5 @@
 import { Theme } from './theme';
+import responsive from '../utils/responsive';
 
 // Font weight constants
 export const FONT_WEIGHT = {
@@ -171,9 +172,9 @@ export const typographyUtils = {
     };
   },
   
-  // Get responsive font size
+  // Get responsive font size (scales relative to screen width)
   responsiveFontSize: (baseSize: number, factor: number = 1): number => {
-    return baseSize * factor;
+    return responsive.moderateScale(baseSize * factor, 0.4);
   },
   
   // Calculate line height from font size

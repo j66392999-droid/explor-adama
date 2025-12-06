@@ -1,92 +1,122 @@
-import { Tabs } from "expo-router"
-import { Ionicons } from "@expo/vector-icons"
-import { useTheme } from '../../../shared/hooks/ui/useTheme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Platform, View } from 'react-native';
+import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../../shared/hooks/ui/useTheme";
+import responsive from "../../../shared/utils/responsive";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Platform, View } from "react-native";
+import { BottomTabsProvider } from "../../../shared/hooks/ui/useBottomTabs";
+import { TabBar } from "../../../components/navigation/TabBar";
 
 export default function TabLayout() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
+
+  const TAB_HEIGHT = responsive.scaleTabBarHeight(); 
+  const ICON_SIZE = responsive.scaleIcon(24);
+  const CENTER_ICON_SIZE = responsive.scaleIcon(28); 
+  const LABEL_FONT = responsive.scaleFont(12);
+
   return (
-    <Tabs
-      screenOptions={{
+    <BottomTabsProvider>
+      <Tabs
+        tabBar={(props: any) => <TabBar {...props} />}
+        screenOptions={{
+        headerShown: false,
+
+        tabBarHideOnKeyboard: false,
+        tabBarShowLabel: false,
+
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.textTertiary,
-        headerShown: false,
+
+
+        // Make the native Tabs bar not reserve space: our custom TabBar overlays absolutely.
         tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: theme.colors.border,
-          height: Platform.select({
-            ios: 60 + insets.bottom,
-            android: 60,
-            default: 60,
-          }),
-          paddingBottom: Platform.select({
-            ios: insets.bottom,
-            android: 8,
-            default: 8,
-          }),
-          paddingTop: 8,
+          height: 0,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          paddingBottom: 0,
+          paddingTop: 0,
         },
+
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
+          fontSize: LABEL_FONT,
+          fontWeight: "500",
         },
+
         tabBarIconStyle: {
-          marginTop: 4,
+          marginTop: responsive.scale(2),
         },
       }}
-    >
-      {/* Home - Main feed */}
+      >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
-          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
+          title: "",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home" size={ICON_SIZE} color={color} />
+          ),
         }}
       />
 
-      {/* Favorites - Saved items and collections */}
       <Tabs.Screen
         name="favorites"
         options={{
-          title: "Favorites",
-          tabBarIcon: ({ color, size }) => <Ionicons name="heart" size={size} color={color} />,
+          title: "",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="heart" size={ICON_SIZE} color={color} />
+          ),
         }}
       />
 
-      {/* Blog - Social feed and posts (displayed as "Social" with add icon) */}
+      {/* Center Button (+) */}
       <Tabs.Screen
         name="blog"
         options={{
-          title: "Blog",
-          tabBarIcon: ({ color, size }) => (
-           <View style={{ justifyContent: "center", alignItems: "center", marginTop: -6 }}>
-            <Ionicons name="add" size={size + 13} color={color} />
-          </View>
-       ),
-      }}
-/>
+          title: "",
+          tabBarIcon: ({ color }) => (
+            <View
+              style={{
+                justifyContent: "center",
+                alignItems: "center",
+                marginTop: responsive.scale(-4), // lifts the button slightly
+              }}
+            >
+              <Ionicons
+                name="add"
+                size={CENTER_ICON_SIZE}
+                color={color}
+              />
+            </View>
+          ),
+        }}
+      />
 
-      {/* Activity - Notifications and interactions */}
       <Tabs.Screen
         name="activity"
         options={{
-          title: "Activity",
-          tabBarIcon: ({ color, size }) => <Ionicons name="notifications" size={size} color={color} />,
+          title: "",
+          tabBarIcon: ({ color }) => (
+            <Ionicons
+              name="notifications"
+              size={ICON_SIZE}
+              color={color}
+            />
+          ),
         }}
       />
 
-      {/* Profile - User profile and settings */}
       <Tabs.Screen
-        name="profile"
+        name="chat"
         options={{
-          title: "Profile",
-          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
+          title: "",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="chatbubble" size={ICON_SIZE} color={color} />
+          ),
         }}
       />
-    </Tabs>
-  )
+      </Tabs>
+    </BottomTabsProvider>
+  );
 }

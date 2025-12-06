@@ -4,6 +4,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import responsive from '../../../shared/utils/responsive';
 
 interface HeadingProps {
   children: React.ReactNode;
@@ -21,15 +22,23 @@ export const Heading: React.FC<HeadingProps> = ({
   const { colors, typography } = useTheme();
 
   const getVariantStyle = () => {
-    switch (variant) {
-      case 'h1': return typography.h1;
-      case 'h2': return typography.h2;
-      case 'h3': return typography.h3;
-      case 'h4': return typography.h4;
-      case 'h5': return typography.h5;
-      case 'h6': return typography.h6;
-      default: return typography.h1;
-    }
+    const v = (() => {
+      switch (variant) {
+        case 'h1': return typography.h1;
+        case 'h2': return typography.h2;
+        case 'h3': return typography.h3;
+        case 'h4': return typography.h4;
+        case 'h5': return typography.h5;
+        case 'h6': return typography.h6;
+        default: return typography.h1;
+      }
+    })();
+
+    return {
+      fontSize: responsive.moderateScale(v.fontSize || 20),
+      lineHeight: v.lineHeight ? responsive.moderateScale(v.lineHeight) : undefined,
+      fontWeight: v.fontWeight as any,
+    };
   };
 
   return (

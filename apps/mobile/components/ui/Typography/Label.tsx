@@ -4,6 +4,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import responsive from '../../../shared/utils/responsive';
 
 interface LabelProps {
   children: React.ReactNode;
@@ -25,7 +26,10 @@ export const Label: React.FC<LabelProps> = ({
   return (
     <Text
       style={[
-        typography.label,
+        {
+          ...typography.label,
+          fontSize: responsive.moderateScale((typography.label.fontSize as number) || 14),
+        },
         { color: disabled ? colors.text + '80' : colors.text },
         style,
       ]}

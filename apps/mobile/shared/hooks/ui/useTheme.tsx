@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, JSX } from 'react';
 import { useColorScheme, ColorSchemeName } from 'react-native';
+import responsive from '../../utils/responsive';
 import { storage } from '../../services/storage/asyncStorage';
 
 // Theme colors for light and dark modes
@@ -350,9 +351,9 @@ export const themeUtils = {
     return color; // Implementation would go here
   },
   
-  // Responsive size calculator
+  // Responsive size calculator — scales relative to base guideline width
   responsiveSize: (baseSize: number, factor: number = 1): number => {
-    return baseSize * factor;
+    return Math.round(responsive.moderateScale(baseSize * factor, 0.5));
   },
   
   // Get color with opacity

@@ -7,7 +7,9 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '../../../shared/hooks/state/useAppSelector';
 import { Text } from '../../../components/ui/Typography/Text';
 import { Button } from '../../../components/ui/Button';
@@ -19,10 +21,14 @@ import { CategoryGrid } from '../components/CategoryGrid';
 import { TrendingSection } from '../components/TrendingSection';
 import { useHome } from '../hooks/useHome';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import { useHideOnScroll } from '../../../shared/hooks/ui/useBottomTabs';
 
-export const HomeScreen: React.FC = ({ navigation }: any) => {
+export const HomeScreen: React.FC = () => {
+  const navigation = useNavigation<any>();
+  const router = useRouter();
   const { user } = useAppSelector((state) => state.auth);
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   
   const {
     homeData,
@@ -31,6 +37,8 @@ export const HomeScreen: React.FC = ({ navigation }: any) => {
     refetch,
     isRefreshing,
   } = useHome();
+
+  const { onScroll, scrollEventThrottle } = useHideOnScroll();
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -70,6 +78,8 @@ export const HomeScreen: React.FC = ({ navigation }: any) => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -79,7 +89,7 @@ export const HomeScreen: React.FC = ({ navigation }: any) => {
         }
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: (insets.top || 12) }] }>
           <View>
             <Text style={styles.greeting}>Hello, {user?.profile?.name || 'Traveler'}! 👋</Text>
             <Text variant="large" style={styles.title}>
@@ -89,12 +99,14 @@ export const HomeScreen: React.FC = ({ navigation }: any) => {
           
           <TouchableOpacity 
             style={styles.avatar}
-            onPress={() => navigation.navigate('Profile')}
+            onPress={() => router.push('/profile')}
           >
             <Image
-              source={{
-                uri: user?.profile?.avatar || 'https://via.placeholder.com/40',
-              }}
+              source={
+                user?.profile?.avatar
+                  ? { uri: user.profile.avatar }
+                  : require('../../../assets/images/placeholder-image.png')
+              }
               style={styles.avatarImage}
             />
           </TouchableOpacity>

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Text } from '../ui/Typography/Text';
 import { useTheme } from '../../shared/hooks/ui/useTheme';
+import responsive from '../../shared/utils/responsive';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -169,22 +170,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   sheet: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: responsive.moderateScale(16),
+    borderTopRightRadius: responsive.moderateScale(16),
     overflow: 'hidden',
   },
   handleContainer: {
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: responsive.moderateScale(8),
   },
   handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
+    width: responsive.moderateScale(40),
+    height: responsive.moderateScale(4),
+    borderRadius: responsive.moderateScale(2),
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: responsive.moderateScale(16),
+    paddingVertical: responsive.moderateScale(12),
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
   },
@@ -193,6 +194,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: responsive.moderateScale(16),
   },
 });

@@ -13,6 +13,7 @@ import { ErrorState } from '../../../components/feedback/ErrorState';
 import { useBooking } from '../hooks/useBooking';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
 import { EmptyState } from '../../../components/feedback/EmptyState';
+import { useHideOnScroll } from '../../../shared/hooks/ui/useBottomTabs';
 
 export const BookingHistoryScreen: React.FC = ({ navigation }: any) => {
   const { colors } = useTheme();
@@ -24,6 +25,8 @@ export const BookingHistoryScreen: React.FC = ({ navigation }: any) => {
     error,
     getBookings,
   } = useBooking();
+
+  const { onScroll, scrollEventThrottle } = useHideOnScroll();
 
   useEffect(() => {
     getBookings();
@@ -206,6 +209,8 @@ export const BookingHistoryScreen: React.FC = ({ navigation }: any) => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
         />
       )}
     </SafeAreaView>

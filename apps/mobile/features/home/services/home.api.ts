@@ -1,6 +1,7 @@
 import { apiClient } from '../../../shared/services/api/client'
 import { PaginatedResponse } from '../../../shared/types/api.types'
 import { HomeData, Place, Event, Recommendation } from '../types/home.types'
+import mockHomeData from '../../../shared/mocks/home.data'
 
 const emptyPage = <T>(page = 1, limit = 10): PaginatedResponse<T> => ({
   data: [] as T[],
@@ -10,7 +11,10 @@ const emptyPage = <T>(page = 1, limit = 10): PaginatedResponse<T> => ({
 export const homeApi = {
   async getHomeData(): Promise<HomeData> {
     const res = await apiClient.get<HomeData>('/home')
-    return res.data ?? { featuredPlaces: [], trendingEvents: [], personalizedRecommendations: [], categories: [] }
+    // In development, fall back to bundled mock data when the API returns no data.
+    if (res.data) return res.data
+    if (typeof __DEV__ !== 'undefined' && __DEV__) return mockHomeData
+    return { featuredPlaces: [], trendingEvents: [], personalizedRecommendations: [], categories: [] }
   },
 
   async getRecommendations(page = 1, limit = 10): Promise<PaginatedResponse<Recommendation>> {
@@ -26,6 +30,22 @@ export const homeApi = {
   async getFeaturedPlaces(page = 1, limit = 15): Promise<PaginatedResponse<Place>> {
     const res = await apiClient.get<PaginatedResponse<Place>>('/home/featured', { params: { page, limit } })
     return res.data ?? emptyPage<Place>(page, limit)
+  },
+
+  // Convenience methods to fetch all items (non-paginated array)
+  async getAllRecommendations(): Promise<Recommendation[]> {
+    const res = await apiClient.get<PaginatedResponse<Recommendation>>('/home/recommendations', { params: { page: 1, limit: 50 } })
+    return res.data?.data ?? []
+  },
+
+  async getAllTrendingEvents(): Promise<Event[]> {
+    const res = await apiClient.get<PaginatedResponse<Event>>('/home/trending', { params: { page: 1, limit: 50 } })
+    return res.data?.data ?? []
+  },
+
+  async getAllFeaturedPlaces(): Promise<Place[]> {
+    const res = await apiClient.get<PaginatedResponse<Place>>('/home/featured', { params: { page: 1, limit: 50 } })
+    return res.data?.data ?? []
   },
 
   async search(query: string, page = 1, limit = 20): Promise<PaginatedResponse<Place | Event | Recommendation>> {

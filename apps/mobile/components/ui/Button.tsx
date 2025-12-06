@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Text } from './Typography/Text';
 import { useTheme } from '../../shared/hooks/ui/useTheme';
+import responsive from '../../shared/utils/responsive';
 
 interface ButtonProps {
   title: string;
@@ -38,7 +39,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const getButtonStyle = () => {
     const baseStyle = {
-      borderRadius: 8,
+      borderRadius: responsive.moderateScale(8),
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -95,9 +96,9 @@ export const Button: React.FC<ButtonProps> = ({
     };
 
     const sizeStyles = {
-      small: { fontSize: 14 },
-      medium: { fontSize: 16 },
-      large: { fontSize: 18 },
+      small: { fontSize: responsive.moderateScale(14) },
+      medium: { fontSize: responsive.moderateScale(16) },
+      large: { fontSize: responsive.moderateScale(18) },
     };
 
     const variantStyles = {

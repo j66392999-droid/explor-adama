@@ -15,6 +15,7 @@ import { BookingForm } from '../components/BookingForm';
 import { useBooking } from '../hooks/useBooking';
 import { useDiscovery } from '../../discovery/hooks/useDiscovery';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import { useHideOnScroll } from '../../../shared/hooks/ui/useBottomTabs';
 
 type BookingScreenProps = {
   route: RouteProp<{ 
@@ -48,6 +49,8 @@ export const BookingScreen: React.FC<BookingScreenProps> = ({
     isLoading: bookingLoading,
     error: bookingError,
   } = useBooking();
+
+  const { onScroll, scrollEventThrottle } = useHideOnScroll();
 
   useEffect(() => {
     getEventDetail(eventId);
@@ -86,6 +89,8 @@ export const BookingScreen: React.FC<BookingScreenProps> = ({
       <ScrollView 
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
       >
         <View style={styles.header}>
           <Text variant="large">Book Tickets</Text>

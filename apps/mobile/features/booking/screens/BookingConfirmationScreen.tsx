@@ -14,6 +14,7 @@ import { Loading } from '../../../components/ui/Loading';
 import { ErrorState } from '../../../components/feedback/ErrorState';
 import { useBooking } from '../hooks/useBooking';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import { useHideOnScroll } from '../../../shared/hooks/ui/useBottomTabs';
 
 type BookingConfirmationScreenProps = {
   route: RouteProp<{ 
@@ -38,6 +39,8 @@ export const BookingConfirmationScreen: React.FC<BookingConfirmationScreenProps>
     error,
     getBookingDetail,
   } = useBooking();
+
+  const { onScroll, scrollEventThrottle } = useHideOnScroll();
 
   useEffect(() => {
     getBookingDetail(bookingId);
@@ -75,6 +78,8 @@ export const BookingConfirmationScreen: React.FC<BookingConfirmationScreenProps>
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={scrollEventThrottle}
       >
         {/* Success Icon */}
         <View style={styles.successIcon}>

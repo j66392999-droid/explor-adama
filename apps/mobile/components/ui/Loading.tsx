@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Text } from './Typography/Text';
 import { useTheme } from '../../shared/hooks/ui/useTheme';
+import responsive from '../../shared/utils/responsive';
 
 interface LoadingProps {
   size?: 'small' | 'large';
@@ -37,10 +38,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: responsive.moderateScale(40),
   },
   message: {
-    marginTop: 16,
+    marginTop: responsive.moderateScale(16),
     textAlign: 'center',
   },
 });

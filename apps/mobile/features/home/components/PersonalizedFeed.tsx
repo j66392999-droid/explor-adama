@@ -50,20 +50,15 @@ export const PersonalizedFeed: React.FC<PersonalizedFeedProps> = ({
     );
 
   return (
-    <FlatList
-      data={recommendations}
-      renderItem={({ item }) => (
+    <View style={[{ padding: 8 }, style]}>
+      {recommendations.map((item) => (
         <RecommendationCard
           key={item.id}
           recommendation={item}
           onPress={() => onItemPress(item as FeedAction)}
         />
-      )}
-      keyExtractor={(item) => item.id}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
-      style={style}
-      contentContainerStyle={{ padding: 8 }}
-    />
+      ))}
+    </View>
   );
 };
 

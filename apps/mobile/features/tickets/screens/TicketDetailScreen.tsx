@@ -8,12 +8,14 @@ import QRCodeDisplay from '../components/QRCodeDisplay';
 import TicketActions from '../components/TicketActions';
 import useTickets from '../hooks/useTickets';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import { useHideOnScroll } from '../../../shared/hooks/ui/useBottomTabs';
 
 export const TicketDetailScreen: React.FC = ({ route, navigation }: any) => {
 	const { ticketId } = route.params || {};
 	const { colors } = useTheme();
 	const { get, loading, markUsed } = useTickets();
 	const [ticket, setTicket] = React.useState<any | null>(null);
+	const { onScroll, scrollEventThrottle } = useHideOnScroll();
 
 	useEffect(() => {
 		if (ticketId) {
@@ -29,8 +31,8 @@ export const TicketDetailScreen: React.FC = ({ route, navigation }: any) => {
 	if (!ticket) return <ErrorState message="Ticket not found" />;
 
 	return (
-		<SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
-			<ScrollView style={styles.scrollView}>
+		    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
+			    <ScrollView style={styles.scrollView} onScroll={onScroll} scrollEventThrottle={scrollEventThrottle}>
 				<Text variant="h1">Ticket #{ticket.id}</Text>
 				<Text>Event: {ticket.eventId}</Text>
 				<Text>Status: {ticket.status}</Text>

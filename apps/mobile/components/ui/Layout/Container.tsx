@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Text } from '../../ui/Typography/Text';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import responsive from '../../../shared/utils/responsive';
 
 interface Tab {
   key: string;
@@ -73,8 +74,8 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: responsive.moderateScale(12),
+    paddingHorizontal: responsive.moderateScale(8),
     flexDirection: 'row',
     justifyContent: 'center',
   },
@@ -82,10 +83,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
   },
   icon: {
-    marginRight: 8,
+    marginRight: responsive.moderateScale(8),
   },
   tabText: {
-    fontSize: 14,
+    fontSize: responsive.moderateScale(14),
     fontWeight: '500',
   },
   activeTabText: {

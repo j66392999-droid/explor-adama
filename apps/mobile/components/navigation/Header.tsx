@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Text } from '../ui/Typography/Text';
 import { useTheme } from '../../shared/hooks/ui/useTheme';
+import responsive from '../../shared/utils/responsive';
 
 interface HeaderProps {
   title: string;
@@ -58,9 +59,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 56,
+    paddingHorizontal: responsive.moderateScale(16),
+    paddingVertical: responsive.moderateScale(12),
+    minHeight: responsive.moderateScale(56),
   },
   left: {
     flex: 1,
@@ -78,9 +79,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   iconButton: {
-    padding: 8,
-    minWidth: 40,
-    minHeight: 40,
+    padding: responsive.moderateScale(8),
+    minWidth: responsive.moderateScale(40),
+    minHeight: responsive.moderateScale(40),
     justifyContent: 'center',
     alignItems: 'center',
   },

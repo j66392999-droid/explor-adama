@@ -4,6 +4,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useTheme } from '../../shared/hooks/ui/useTheme';
+import responsive from '../../shared/utils/responsive';
 
 interface ScreenLayoutProps {
   children: React.ReactNode;
@@ -37,6 +38,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   padding: {
-    padding: 16,
+    padding: responsive.moderateScale(16),
   },
 });

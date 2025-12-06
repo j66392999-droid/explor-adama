@@ -8,6 +8,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { Text } from './Typography/Text';
 import { useTheme } from '../../shared/hooks/ui/useTheme';
+import responsive from '../../shared/utils/responsive';
 
 interface InputProps {
   value: string;
@@ -75,7 +76,7 @@ export const Input: React.FC<InputProps> = ({
         {leftIcon && (
           <View style={styles.leftIcon}>
             {typeof leftIcon === 'string' ? (
-              <Ionicons name={mapIcon(leftIcon)} size={20} color={colors.text + '80'} />
+              <Ionicons name={mapIcon(leftIcon)} size={responsive.moderateScale(20)} color={colors.text + '80'} />
             ) : (
               leftIcon
             )}
@@ -87,8 +88,8 @@ export const Input: React.FC<InputProps> = ({
             styles.input,
             {
               color: colors.text,
-              paddingLeft: leftIcon ? 40 : 16,
-              paddingRight: rightIcon ? 40 : 16,
+              paddingLeft: leftIcon ? responsive.moderateScale(40) : responsive.moderateScale(16),
+              paddingRight: rightIcon ? responsive.moderateScale(40) : responsive.moderateScale(16),
             },
             multiline && styles.multiline,
             style,
@@ -114,8 +115,8 @@ export const Input: React.FC<InputProps> = ({
             onPress={onRightIconPress}
             disabled={!onRightIconPress}
           >
-            {typeof rightIcon === 'string' ? (
-              <Ionicons name={mapIcon(rightIcon)} size={20} color={colors.text + '80'} />
+              {typeof rightIcon === 'string' ? (
+              <Ionicons name={mapIcon(rightIcon)} size={responsive.moderateScale(20)} color={colors.text + '80'} />
             ) : (
               rightIcon
             )}
@@ -139,47 +140,47 @@ export const Input: React.FC<InputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: responsive.moderateScale(16),
   },
   label: {
-    marginBottom: 8,
+    marginBottom: responsive.moderateScale(8),
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: responsive.moderateScale(14),
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 8,
-    minHeight: 48,
+    borderRadius: responsive.moderateScale(8),
+    minHeight: responsive.moderateScale(48),
   },
   disabled: {
     opacity: 0.6,
   },
   leftIcon: {
     position: 'absolute',
-    left: 12,
+    left: responsive.moderateScale(12),
     zIndex: 1,
   },
   rightIcon: {
     position: 'absolute',
-    right: 12,
+    right: responsive.moderateScale(12),
     zIndex: 1,
-    padding: 4,
+    padding: responsive.moderateScale(4),
   },
   input: {
     flex: 1,
-    fontSize: 16,
-    minHeight: 48,
+    fontSize: responsive.moderateScale(16),
+    minHeight: responsive.moderateScale(48),
   },
   multiline: {
-    minHeight: 100,
-    paddingTop: 12,
-    paddingBottom: 12,
+    minHeight: responsive.moderateScale(100),
+    paddingTop: responsive.moderateScale(12),
+    paddingBottom: responsive.moderateScale(12),
   },
   helper: {
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: responsive.moderateScale(12),
+    marginTop: responsive.moderateScale(4),
   },
 });
 
