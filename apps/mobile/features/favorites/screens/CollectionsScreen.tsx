@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, FlatList, StyleSheet, Button } from 'react-native';
-import useFavorites from '../hooks/useFavorites';
+import { useFavorites } from '../hooks/useFavorites';
 import { useHideOnScroll } from '../../../shared/hooks/ui/useBottomTabs';
-import CollectionCard from '../components/CollectionCard';
+import { CollectionCard } from '../components/CollectionCard';
 
 const CollectionsScreen: React.FC = ({ navigation }: any) => {
 	const { collections } = useFavorites();

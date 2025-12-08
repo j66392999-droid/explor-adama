@@ -1,90 +1,160 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
-  FlatList,
   StyleSheet,
+  FlatList,
+  RefreshControl,
   TouchableOpacity,
-  Image,
 } from 'react-native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RouteProp } from '@react-navigation/native';
 import { Text } from '../../../components/ui/Typography/Text';
 import { Loading } from '../../../components/ui/Loading';
 import { ErrorState } from '../../../components/feedback/ErrorState';
+import { EmptyState } from '../../../components/feedback/EmptyState';
 import { PlaceCard } from '../components/PlaceCard';
 import { EventCard } from '../components/EventCard';
 import { useDiscovery } from '../hooks/useDiscovery';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import { RootStackParamList } from '../../../types/navigation';
+import { Place, Event } from '../types/discovery.types'; // Import the actual types
 
-type CategoryScreenProps = {
-  route: RouteProp<{ params: { categoryId: string; categoryName: string } }, 'params'>;
-  navigation: any;
-};
+type CategoryScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Category'>;
+type CategoryScreenRouteProp = RouteProp<RootStackParamList, 'Category'>;
 
-export const CategoryScreen: React.FC<CategoryScreenProps> = ({
-  route,
-  navigation,
-}) => {
+export const CategoryScreen: React.FC = () => {
+  const navigation = useNavigation<CategoryScreenNavigationProp>();
+  const route = useRoute<CategoryScreenRouteProp>();
   const { categoryId, categoryName } = route.params;
+  
   const { colors } = useTheme();
-  
-  const [activeTab, setActiveTab] = useState<'places' | 'events'>('places');
-  
-  const {
-    categoryData,
-    isLoading,
-    error,
-    getCategoryData,
+  const { 
+    getCategoryItems, 
+    isLoading, 
+    error, 
+    refresh, 
+    retry, 
+    searchResults,
+    selectedCategory 
   } = useDiscovery();
+  
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [activeTab, setActiveTab] = useState<'places' | 'events'>('places');
 
   useEffect(() => {
-    getCategoryData(categoryId);
+    loadCategoryItems();
   }, [categoryId]);
 
-  const data = activeTab === 'places' 
-    ? categoryData?.places || []
-    : categoryData?.events || [];
-
-  const renderItem = ({ item }: { item: any }) => {
-    if (activeTab === 'places') {
-      return (
-        <PlaceCard
-          place={item}
-          onPress={() => navigation.navigate('PlaceDetail', { placeId: item.id })}
-          style={styles.card}
-        />
-      );
-    } else {
-      return (
-        <EventCard
-          event={item}
-          onPress={() => navigation.navigate('EventDetail', { eventId: item.id })}
-          style={styles.card}
-        />
-      );
+  const loadCategoryItems = async () => {
+    try {
+      await getCategoryItems(categoryId);
+    } catch (error) {
+      console.error('Failed to load category items:', error);
     }
   };
 
-  if (isLoading) {
-    return <Loading />;
-  }
+  // Update local state when searchResults changes
+  useEffect(() => {
+    if (searchResults) {
+      // Use type assertions since we know the structure
+      const categoryPlaces = searchResults.places as Place[];
+      const categoryEvents = searchResults.events as Event[];
+      
+      setPlaces(categoryPlaces);
+      setEvents(categoryEvents);
+    }
+  }, [searchResults]);
 
-  if (error) {
+  const handlePlacePress = (place: Place) => {
+    navigation.navigate('PlaceDetail', { placeId: place.id });
+  };
+
+  const handleEventPress = (event: Event) => {
+    navigation.navigate('EventDetail', { eventId: event.id });
+  };
+
+  const renderContent = () => {
+    if (isLoading && places.length === 0 && events.length === 0) {
+      return <Loading message={`Loading ${categoryName}...`} />;
+    }
+
+    if (error && places.length === 0 && events.length === 0) {
+      return <ErrorState message={error} onRetry={retry} />;
+    }
+
+    const currentItems = activeTab === 'places' ? places : events;
+    const totalItems = activeTab === 'places' ? places.length : events.length;
+
+    if (totalItems === 0) {
+      return (
+        <EmptyState
+          title={`No ${activeTab} found`}
+          message={`No ${activeTab} in ${categoryName} category yet`}
+          icon={activeTab === 'places' ? '🏛️' : '🎪'}
+        />
+      );
+    }
+
+    if (activeTab === 'places') {
+      return (
+        <FlatList
+          data={places}
+          renderItem={({ item }) => (
+            <PlaceCard
+              place={item}
+              onPress={() => handlePlacePress(item)}
+              style={styles.card}
+            />
+          )}
+          keyExtractor={item => item.id}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading && places.length > 0}
+              onRefresh={loadCategoryItems}
+              colors={[colors.primary]}
+            />
+          }
+          contentContainerStyle={styles.listContent}
+        />
+      );
+    }
+
     return (
-      <ErrorState
-        message="Failed to load category data"
-        onRetry={() => getCategoryData(categoryId)}
+      <FlatList
+        data={events}
+        renderItem={({ item }) => (
+          <EventCard
+            event={item}
+            onPress={() => handleEventPress(item)}
+            style={styles.card}
+          />
+        )}
+        keyExtractor={item => item.id}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading && events.length > 0}
+            onRefresh={loadCategoryItems}
+            colors={[colors.primary]}
+          />
+        }
+        contentContainerStyle={styles.listContent}
       />
     );
-  }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text variant="h1">{categoryName}</Text>
+        <Text variant="large" style={styles.title}>
+          {selectedCategory?.name || categoryName}
+        </Text>
         <Text style={styles.subtitle}>
-          Discover amazing {categoryName.toLowerCase()} around you
+          {activeTab === 'places' ? places.length : events.length} items
         </Text>
       </View>
 
@@ -93,65 +163,42 @@ export const CategoryScreen: React.FC<CategoryScreenProps> = ({
         <TouchableOpacity
           style={[
             styles.tab,
-            activeTab === 'places' && [styles.activeTab, { backgroundColor: colors.primary }],
+            activeTab === 'places' && [styles.activeTab, { borderBottomColor: colors.primary }],
           ]}
           onPress={() => setActiveTab('places')}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'places' && styles.activeTabText,
-            ]}
-          >
-            Places ({categoryData?.places?.length || 0})
+          <Text style={[
+            styles.tabText,
+            activeTab === 'places' && { color: colors.primary, fontWeight: '600' },
+          ]}>
+            Places ({places.length})
           </Text>
         </TouchableOpacity>
         
         <TouchableOpacity
           style={[
             styles.tab,
-            activeTab === 'events' && [styles.activeTab, { backgroundColor: colors.primary }],
+            activeTab === 'events' && [styles.activeTab, { borderBottomColor: colors.primary }],
           ]}
           onPress={() => setActiveTab('events')}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === 'events' && styles.activeTabText,
-            ]}
-          >
-            Events ({categoryData?.events?.length || 0})
+          <Text style={[
+            styles.tabText,
+            activeTab === 'events' && { color: colors.primary, fontWeight: '600' },
+          ]}>
+            Events ({events.length})
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Content */}
-      <FlatList
-        data={data}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-              <Image
-                source={require('../../../../assets/images/illustrations/search.png')}
-              style={styles.emptyIllustration}
-            />
-            <Text variant="h3" style={styles.emptyTitle}>
-              No {activeTab} found
-            </Text>
-            <Text style={styles.emptyText}>
-              There are no {activeTab} in this category yet.
-            </Text>
-          </View>
-        }
-      />
+      <View style={styles.content}>
+        {renderContent()}
+      </View>
     </SafeAreaView>
   );
 };
 
-export default CategoryScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -161,54 +208,36 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
   },
+  title: {
+    marginBottom: 8,
+  },
   subtitle: {
+    fontSize: 14,
     opacity: 0.7,
-    marginTop: 4,
   },
   tabs: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginRight: 8,
     alignItems: 'center',
   },
-  activeTab: {},
-  tabText: {
-    fontWeight: '600',
+  activeTab: {
+    borderBottomWidth: 2,
   },
-  activeTabText: {
-    color: 'white',
+  tabText: {
+    fontSize: 14,
+  },
+  content: {
+    flex: 1,
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    padding: 16,
   },
   card: {
     marginBottom: 12,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-  },
-  emptyIllustration: {
-    width: 120,
-    height: 120,
-    marginBottom: 24,
-  },
-  emptyTitle: {
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  emptyText: {
-    textAlign: 'center',
-    opacity: 0.7,
-    lineHeight: 20,
   },
 });

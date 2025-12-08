@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '../../../shared/hooks/state/useAppSelector';
 import { Text } from '../../../components/ui/Typography/Text';
@@ -19,13 +19,18 @@ import { ErrorState } from '../../../components/feedback/ErrorState';
 import { PersonalizedFeed, FeedAction } from '../components/PersonalizedFeed';
 import { CategoryGrid } from '../components/CategoryGrid';
 import { TrendingSection } from '../components/TrendingSection';
+import { PlaceCard } from '../../discovery/components/PlaceCard';
+import { EventCard } from '../../discovery/components/EventCard';
 import { useHome } from '../hooks/useHome';
+import { useDiscovery } from '../../discovery/hooks/useDiscovery';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
-import { useHideOnScroll } from '../../../shared/hooks/ui/useBottomTabs';
+import { RootStackParamList } from '../../../types/navigation';
+import { Ionicons } from '@expo/vector-icons';
+
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export const HomeScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const router = useRouter();
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user } = useAppSelector((state) => state.auth);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -38,7 +43,7 @@ export const HomeScreen: React.FC = () => {
     isRefreshing,
   } = useHome();
 
-  const { onScroll, scrollEventThrottle } = useHideOnScroll();
+  const { nearbyPlaces, nearbyEvents, userLocation } = useDiscovery();
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -49,7 +54,10 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleCategoryPress = (category: any) => {
-    navigation.navigate('Category', { categoryId: category.id, categoryName: category.name });
+    navigation.navigate('Category', { 
+      categoryId: category.id, 
+      categoryName: category.name 
+    });
   };
 
   const handlePlacePress = (place: any) => {
@@ -58,6 +66,14 @@ export const HomeScreen: React.FC = () => {
 
   const handleEventPress = (event: any) => {
     navigation.navigate('EventDetail', { eventId: event.id });
+  };
+
+  const handleMapPress = () => {
+    navigation.navigate('Map');
+  };
+
+  const handleProfilePress = () => {
+    navigation.navigate('Profile');
   };
 
   if (isLoading && !homeData) {
@@ -78,8 +94,6 @@ export const HomeScreen: React.FC = () => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={scrollEventThrottle}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -99,7 +113,7 @@ export const HomeScreen: React.FC = () => {
           
           <TouchableOpacity 
             style={styles.avatar}
-            onPress={() => router.push('/profile')}
+            onPress={handleProfilePress}
           >
             <Image
               source={
@@ -120,18 +134,16 @@ export const HomeScreen: React.FC = () => {
             onChangeText={setSearchQuery}
             onSubmitEditing={handleSearch}
             leftIcon={
-              <Image
-                source={require('../../../assets/images/search.png')}
-                style={styles.searchIcon}
-              />
+              <Ionicons name="search" size={20} color={colors.textSecondary} />
             }
             containerStyle={styles.searchInput}
           />
-          <Button
-            title="Search"
-            onPress={handleSearch}
-            style={styles.searchButton}
-          />
+          <TouchableOpacity
+            style={[styles.mapButton, { backgroundColor: colors.primary }]}
+            onPress={handleMapPress}
+          >
+            <Ionicons name="map" size={20} color="white" />
+          </TouchableOpacity>
         </View>
 
         {/* Categories */}
@@ -143,20 +155,34 @@ export const HomeScreen: React.FC = () => {
           />
         )}
 
-        {/* Personalized Feed */}
-        {homeData?.personalizedRecommendations && 
-         homeData.personalizedRecommendations.length > 0 && (
-          <PersonalizedFeed
-            recommendations={homeData.personalizedRecommendations}
-            onItemPress={(item: FeedAction) => {
-              if (item.itemType === 'PLACE') {
-                handlePlacePress(item.item as any);
-              } else if (item.itemType === 'EVENT') {
-                handleEventPress(item.item as any);
-              }
-            }}
-            style={styles.section}
-          />
+        {/* Nearby Places */}
+        {nearbyPlaces.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text variant="small">Nearby Places</Text>
+              <Button
+                title="See All"
+                variant="ghost"
+                size="small"
+                onPress={() => navigation.navigate('Search', { query: 'places' })}
+              />
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {nearbyPlaces.slice(0, 5).map((place) => (
+                <PlaceCard
+                  key={place.id}
+                  place={place}
+                  onPress={() => handlePlacePress(place)}
+                  variant="compact"
+                  style={styles.horizontalCard}
+                />
+              ))}
+            </ScrollView>
+          </View>
         )}
 
         {/* Trending Events */}
@@ -168,6 +194,56 @@ export const HomeScreen: React.FC = () => {
           />
         )}
 
+        {/* Personalized Feed */}
+        {homeData?.personalizedRecommendations && 
+         homeData.personalizedRecommendations.length > 0 && (
+          <View style={styles.section}>
+            <Text variant="small" style={styles.sectionTitle}>
+              Recommended For You
+            </Text>
+            <PersonalizedFeed
+              recommendations={homeData.personalizedRecommendations}
+              onItemPress={(item: FeedAction) => {
+                if ('itemType' in item && item.itemType === 'PLACE') {
+                  handlePlacePress(item.item as any);
+                } else if ('itemType' in item && item.itemType === 'EVENT') {
+                  handleEventPress(item.item as any);
+                }
+              }}
+            />
+          </View>
+        )}
+
+        {/* Upcoming Events */}
+        {nearbyEvents.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text variant="small">Upcoming Events</Text>
+              <Button
+                title="See All"
+                variant="ghost"
+                size="small"
+                onPress={() => navigation.navigate('Search', { query: 'events' })}
+              />
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {nearbyEvents.slice(0, 5).map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onPress={() => handleEventPress(event)}
+                  variant="compact"
+                  style={styles.horizontalCard}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Featured Places */}
         {homeData?.featuredPlaces && homeData.featuredPlaces.length > 0 && (
           <View style={styles.section}>
@@ -177,48 +253,61 @@ export const HomeScreen: React.FC = () => {
                 title="See All"
                 variant="ghost"
                 size="small"
-                onPress={() => navigation.navigate('Discovery')}
+                onPress={() => navigation.navigate('Search', {})}
               />
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalScroll}
-            >
-              {homeData.featuredPlaces.map((place) => (
-                <TouchableOpacity
+            <View style={styles.verticalList}>
+              {homeData.featuredPlaces.slice(0, 3).map((place) => (
+                <PlaceCard
                   key={place.id}
-                  style={[styles.featuredCard, { backgroundColor: colors.surface }]}
+                  place={place}
                   onPress={() => handlePlacePress(place)}
-                >
-                  <Image
-                    source={{ uri: place.images[0]?.url }}
-                    style={styles.featuredImage}
-                  />
-                  <View style={styles.featuredContent}>
-                    <Text variant="small" numberOfLines={2}>{place.name}</Text>
-                    <Text style={styles.featuredDescription} numberOfLines={2}>
-                      {place.description}
-                    </Text>
-                    <View style={styles.featuredMeta}>
-                      <Text style={styles.rating}>
-                        ⭐ {place.avgRating?.toFixed(1) || 'New'}
-                      </Text>
-                      <Text style={styles.views}>
-                        👁️ {place.viewCount}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
+                  style={styles.verticalCard}
+                />
               ))}
-            </ScrollView>
+            </View>
           </View>
         )}
+
+        {/* Quick Actions */}
+        {/*<View style={styles.quickActions}>
+          <Text variant="body">Quick Actions</Text>
+          <TouchableOpacity
+            style={[styles.quickAction, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate('Search', { query: 'restaurants' })}
+          >
+            <Text style={styles.quickActionIcon}>🍽️</Text>
+            <Text style={styles.quickActionText}>Food</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.quickAction, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate('Search', { query: 'hotels' })}
+          >
+            <Text style={styles.quickActionIcon}>🏨</Text>
+            <Text style={styles.quickActionText}>Stay</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.quickAction, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate('Search', { query: 'activities' })}
+          >
+            <Text style={styles.quickActionIcon}>🎭</Text>
+            <Text style={styles.quickActionText}>Activities</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[styles.quickAction, { backgroundColor: colors.surface }]}
+            onPress={() => navigation.navigate('Search', { query: 'shopping' })}
+          >
+            <Text style={styles.quickActionIcon}>🛍️</Text>
+            <Text style={styles.quickActionText}>Shopping</Text>
+          </TouchableOpacity>
+        </View>*/}
       </ScrollView>
     </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -256,18 +345,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: 24,
+    gap: 12,
   },
   searchInput: {
     flex: 1,
-    marginRight: 12,
     marginBottom: 0,
   },
-  searchIcon: {
-    width: 20,
-    height: 20,
-  },
-  searchButton: {
-    minWidth: 80,
+  mapButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   section: {
     marginBottom: 32,
@@ -279,43 +368,41 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
+  sectionTitle: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
   horizontalScroll: {
     paddingHorizontal: 20,
   },
-  featuredCard: {
-    width: 280,
-    marginRight: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  horizontalCard: {
+    width: 200,
+    marginRight: 12,
   },
-  featuredImage: {
-    width: '100%',
-    height: 160,
+  verticalList: {
+    paddingHorizontal: 20,
   },
-  featuredContent: {
-    padding: 12,
+  verticalCard: {
+    marginBottom: 12,
   },
-  featuredDescription: {
-    opacity: 0.7,
-    marginTop: 4,
-    marginBottom: 8,
-    fontSize: 14,
-  },
-  featuredMeta: {
+  quickActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+    marginBottom: 32,
   },
-  rating: {
-    fontSize: 12,
-    fontWeight: '600',
+  quickAction: {
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    minWidth: 70,
   },
-  views: {
+  quickActionIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  quickActionText: {
     fontSize: 12,
-    opacity: 0.7,
+    fontWeight: '500',
   },
 });

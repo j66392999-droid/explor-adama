@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { View, TextInput, Button, StyleSheet } from 'react-native';
-import useFavorites from '../hooks/useFavorites';
+import {useFavorites} from '../hooks/useFavorites';
 
 const CreateCollectionScreen: React.FC = ({ navigation }: any) => {
-	const { addCollection } = useFavorites();
+	const favorites = useFavorites();
+	const addCollection = (favorites as any).addCollection as ((name: string, description?: string) => Promise<void>) | undefined;
 	const [name, setName] = useState('');
 	const [description, setDescription] = useState('');
-
 	const handleCreate = async () => {
 		if (!name.trim()) return;
+		if (typeof addCollection !== 'function') {
+			console.warn('addCollection is not available on useFavorites');
+			return;
+		}
 		await addCollection(name.trim(), description.trim());
 		navigation?.goBack();
 	};

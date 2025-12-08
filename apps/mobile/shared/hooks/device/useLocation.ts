@@ -1,164 +1,226 @@
-import { useState, useEffect } from 'react';
-import { Platform } from 'react-native';
+// shared/hooks/device/useLocation.ts
+import { useState, useEffect, useCallback } from 'react';
+import { Platform, PermissionsAndroid } from 'react-native';
+import * as Location from 'expo-location';
 import { logger } from '../../utils/logging/logger';
-import * as ExpoLocation from 'expo-location';
 
-// Types
-export interface GeoLocation {
+interface LocationData {
   latitude: number;
   longitude: number;
-  accuracy?: number;
+  accuracy?: number;  
   altitude?: number | null;
-  altitudeAccuracy?: number | null;
   heading?: number | null;
   speed?: number | null;
+  timestamp?: number;
 }
 
-export interface UseLocationReturn {
-  location: GeoLocation | null;
-  error: string | null;
-  loading: boolean;
-  refresh: () => void;
-  hasPermission: boolean;
-  getAddressFromCoordinates: () => Promise<string | null>;
-  calculateDistance: (target: GeoLocation) => number;
+//Create a type that matches what Expo Location returns
+interface ExpoLocationData {
+  latitude: number;
+  longitude: number;
+  accuracy?: number | null;
+  altitude?: number | null;
+  heading?: number | null;
+  speed?: number | null;
+  timestamp?: number;
 }
 
-export const useLocation = (): UseLocationReturn => {
-  const [location, setLocation] = useState<GeoLocation | null>(null);
+export const useLocation = () => {
+  const [location, setLocation] = useState<LocationData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hasPermission, setHasPermission] = useState(false);
+  const [permissionGranted, setPermissionGranted] = useState(false);
 
-  const requestPermissions = async (): Promise<boolean> => {
-    try {
-      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
-        return status === 'granted';
-    } catch (err: any) {
-      try { logger.error('Permission request error', err); } catch { try { console.error(`Permission request error: ${err?.message || err}`); } catch {} }
-      return false;
-    }
-  };
-
-  const checkPermissions = async (): Promise<boolean> => {
-    try {
-      const { status } = await ExpoLocation.getForegroundPermissionsAsync();
-      return status === 'granted';
-    } catch (err: any) {
-      try { logger.error('Permission check error', err); } catch { try { console.error(`Permission check error: ${err?.message || err}`); } catch {} }
-      return false;
-    }
-  };
-
-  const getCurrentLocation = async (): Promise<GeoLocation | null> => {
-    try {
-      const pos = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Highest });
-
-      return {
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-        accuracy: (pos.coords.accuracy ?? undefined) as number | undefined,
-        altitude: (pos.coords.altitude ?? undefined) as number | undefined,
-        altitudeAccuracy: (pos.coords.altitudeAccuracy ?? undefined) as number | undefined,
-        heading: (pos.coords.heading ?? undefined) as number | undefined,
-        speed: (pos.coords.speed ?? undefined) as number | undefined,
-      } as GeoLocation;
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to get location';
-      setError(errorMessage);
-      return null;
-    }
-  };
-
-  const getLocation = async () => {
+  const requestPermission = useCallback(async (): Promise<boolean> => {
     try {
       setLoading(true);
       setError(null);
 
-      // Check existing permissions
-      const hasExistingPermission = await checkPermissions();
+      let { status } = await Location.requestForegroundPermissionsAsync();
       
-      if (!hasExistingPermission) {
-        const granted = await requestPermissions();
-        setHasPermission(granted);
-        
-        if (!granted) {
-          setError('Location permission denied');
-          setLoading(false);
-          return;
-        }
-      } else {
-        setHasPermission(true);
+      if (status !== 'granted') {
+        setError('Location permission denied');
+        setPermissionGranted(false);
+        return false;
       }
 
-      // Get current location
-      const currentLocation = await getCurrentLocation();
+      setPermissionGranted(true);
       
-      if (currentLocation) {
-        setLocation(currentLocation);
-        setError(null);
-      } else {
-        setError('Failed to get current location');
-      }
-      
-      setLoading(false);
+      // Get initial location
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      // Fix: Handle null values for accuracy
+      setLocation({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+        accuracy: currentLocation.coords.accuracy ?? undefined, // Convert null to undefined
+        altitude: currentLocation.coords.altitude ?? undefined, // Convert null to undefined
+        heading: currentLocation.coords.heading ?? undefined,   // Convert null to undefined
+        speed: currentLocation.coords.speed ?? undefined,       // Convert null to undefined
+        timestamp: currentLocation.timestamp,
+      });
+
+      logger.info('Location permission granted and location obtained');
+      return true;
     } catch (err: any) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to get location';
-      setError(errorMessage);
+      const errorMsg = err.message || 'Failed to get location';
+      setError(errorMsg);
+      logger.error('Location permission request failed', err);
+      return false;
+    } finally {
       setLoading(false);
     }
-  };
-
-  // Get address from coordinates using Google Maps Geocoding API
-  const getAddressFromCoordinates = async (coords: GeoLocation): Promise<string | null> => {
-    try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&key=AIzaSyBZ-pljCr0xAuooBBNYwF9SuDXQKSt5lbI`
-      );
-      
-      const data = await response.json();
-      
-      if (data.results && data.results.length > 0) {
-        return data.results[0].formatted_address;
-      }
-      
-      return null;
-    } catch (err: any) {
-      try { logger.error('Geocoding error', err); } catch { try { console.error(`Geocoding error: ${err?.message || err}`); } catch {} }
-      return null;
-    }
-  };
-
-  // Calculate distance between two coordinates in meters
-  const calculateDistance = (coord1: GeoLocation, coord2: GeoLocation): number => {
-    const R = 6371e3; // Earth's radius in meters
-    const φ1 = (coord1.latitude * Math.PI) / 180;
-    const φ2 = (coord2.latitude * Math.PI) / 180;
-    const Δφ = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
-    const Δλ = ((coord2.longitude - coord1.longitude) * Math.PI) / 180;
-
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  };
-
-  useEffect(() => {
-    getLocation();
   }, []);
+
+  const getCurrentLocation = useCallback(async (): Promise<LocationData | null> => {
+    if (!permissionGranted) {
+      const hasPermission = await requestPermission();
+      if (!hasPermission) return null;
+    }
+
+    try {
+      setLoading(true);
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const locationData: LocationData = {
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+        accuracy: currentLocation.coords.accuracy ?? undefined, // Convert null to undefined
+        altitude: currentLocation.coords.altitude ?? undefined, // Convert null to undefined
+        heading: currentLocation.coords.heading ?? undefined,   // Convert null to undefined
+        speed: currentLocation.coords.speed ?? undefined,       // Convert null to undefined
+        timestamp: currentLocation.timestamp,
+      };
+
+      setLocation(locationData);
+      return locationData;
+    } catch (err: any) {
+      const errorMsg = err.message || 'Failed to get current location';
+      setError(errorMsg);
+      logger.error('Failed to get current location', err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [permissionGranted, requestPermission]);
+
+  const watchLocation = useCallback((callback: (location: LocationData) => void) => {
+    if (!permissionGranted) return null;
+
+    const subscription = Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.Balanced,
+        distanceInterval: 10, // minimum change in meters
+        timeInterval: 5000, // minimum change in milliseconds
+      },
+      (newLocation) => {
+        const locationData: LocationData = {
+          latitude: newLocation.coords.latitude,
+          longitude: newLocation.coords.longitude,
+          accuracy: newLocation.coords.accuracy ?? undefined, // Convert null to undefined
+          altitude: newLocation.coords.altitude ?? undefined, // Convert null to undefined
+          heading: newLocation.coords.heading ?? undefined,   // Convert null to undefined
+          speed: newLocation.coords.speed ?? undefined,       // Convert null to undefined
+          timestamp: newLocation.timestamp,
+        };
+
+        setLocation(locationData);
+        callback(locationData);
+      }
+    );
+
+    return subscription;
+  }, [permissionGranted]);
+
+  // Calculate distance between two coordinates in kilometers
+  const calculateDistance = useCallback(
+    (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const R = 6371; // Earth's radius in kilometers
+      const dLat = (lat2 - lat1) * (Math.PI / 180);
+      const dLon = (lon2 - lon1) * (Math.PI / 180);
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) *
+          Math.cos(lat2 * (Math.PI / 180)) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    },
+    []
+  );
+
+  // Get address from coordinates (reverse geocoding)
+  const getAddressFromCoordinates = useCallback(
+    async (latitude: number, longitude: number): Promise<string | null> => {
+      try {
+        const address = await Location.reverseGeocodeAsync({
+          latitude,
+          longitude,
+        });
+
+        if (address.length > 0) {
+          const addr = address[0];
+          const parts = [
+            addr.name,
+            addr.street,
+            addr.city,
+            addr.region,
+            addr.country,
+          ].filter(Boolean);
+          return parts.join(', ');
+        }
+
+        return null;
+      } catch (err) {
+        logger.error('Reverse geocoding failed', err);
+        return null;
+      }
+    },
+    []
+  );
+
+  // Get coordinates from address (geocoding)
+  const getCoordinatesFromAddress = useCallback(
+    async (address: string): Promise<LocationData | null> => {
+      try {
+        const coordinates = await Location.geocodeAsync(address);
+
+        if (coordinates.length > 0) {
+          return {
+            latitude: coordinates[0].latitude,
+            longitude: coordinates[0].longitude,
+          };
+        }
+
+        return null;
+      } catch (err) {
+        logger.error('Geocoding failed', err);
+        return null;
+      }
+    },
+    []
+  );
+
+  // Initialize location on mount
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
 
   return {
     location,
     error,
     loading,
-    hasPermission,
-    refresh: getLocation,
-    // Additional utilities
-    getAddressFromCoordinates: location ? () => getAddressFromCoordinates(location) : async () => null,
-    calculateDistance: (target: GeoLocation) => (location ? calculateDistance(location, target) : 0),
+    permissionGranted,
+    requestPermission,
+    getCurrentLocation,
+    watchLocation,
+    calculateDistance,
+    getAddressFromCoordinates,
+    getCoordinatesFromAddress,
   };
 };
-
-export default useLocation;

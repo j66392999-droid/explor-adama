@@ -9,10 +9,28 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "config": {
+        "googleMapsApiKey": "AIzaSyBZ-pljCr0xAuooBBNYwF9SuDXQKSt5lbI"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show nearby places and events.",
+        "NSLocationAlwaysUsageDescription": "This app needs access to your location to show nearby places and events.",
+        "UIBackgroundModes": ["location"]
+      },
       "supportsTablet": true,
       "bundleIdentifier": "com.natk3y0.mobile"
     },
     "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBZ-pljCr0xAuooBBNYwF9SuDXQKSt5lbI"
+        }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "NOTIFICATIONS"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -44,7 +62,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow WIA Albania to use your location."
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
       ],
       [

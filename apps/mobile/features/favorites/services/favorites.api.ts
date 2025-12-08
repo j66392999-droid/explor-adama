@@ -1,63 +1,115 @@
-import { FavoriteItem, Collection } from '../types/favorites.types';
+import { apiClient } from '../../../shared/services/api/client';
+import { 
+  Favorite, 
+  Collection, 
+  CreateCollectionInput, 
+  AddToCollectionInput,
+  UpdateCollectionInput,
+  PaginatedFavoritesResponse,
+  PaginatedCollectionsResponse, 
+  CollectionItem
+} from '../types/favorites.types';
 
-// In-memory store for simulation
-let favoriteStore: Record<string, FavoriteItem> = {};
-let collectionsStore: Collection[] = [
-	{ id: 'col-1', name: 'Saved', description: 'Saved items', items: [], createdAt: new Date().toISOString() },
-];
+export const favoritesApi = {
+  // Favorites
+  async getFavorites(page = 1, limit = 20): Promise<PaginatedFavoritesResponse> {
+    const response = await apiClient.get<PaginatedFavoritesResponse>('/favorites', {
+      params: { page, limit },
+    });
+    return response.data || {
+      data: [],
+      pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+    };
+  },
 
-export const fetchFavorites = async (): Promise<FavoriteItem[]> => {
-	return new Promise((resolve) => setTimeout(() => resolve(Object.values(favoriteStore)), 200));
+  async addFavorite(itemId: string, itemType: 'PLACE' | 'EVENT'): Promise<Favorite> {
+    const response = await apiClient.post<Favorite>('/favorites', { itemId, itemType });
+    if (!response.data) {
+      throw new Error('Failed to add to favorites');
+    }
+    return response.data;
+  },
+
+  async removeFavorite(favoriteId: string): Promise<void> {
+    await apiClient.delete(`/favorites/${favoriteId}`);
+  },
+
+  async checkFavorite(itemId: string, itemType: 'PLACE' | 'EVENT'): Promise<boolean> {
+    const response = await apiClient.get<{ isFavorite: boolean }>('/favorites/check', {
+      params: { itemId, itemType },
+    });
+    return response.data?.isFavorite || false;
+  },
+
+  // Collections
+  async getCollections(page = 1, limit = 20): Promise<PaginatedCollectionsResponse> {
+    const response = await apiClient.get<PaginatedCollectionsResponse>('/collections', {
+      params: { page, limit },
+    });
+    return response.data || {
+      data: [],
+      pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+    };
+  },
+
+  async getCollection(collectionId: string): Promise<Collection> {
+    const response = await apiClient.get<Collection>(`/collections/${collectionId}`);
+    if (!response.data) {
+      throw new Error('Collection not found');
+    }
+    return response.data;
+  },
+
+  async createCollection(data: CreateCollectionInput): Promise<Collection> {
+    const response = await apiClient.post<Collection>('/collections', data);
+    if (!response.data) {
+      throw new Error('Failed to create collection');
+    }
+    return response.data;
+  },
+
+  async updateCollection(collectionId: string, data: UpdateCollectionInput): Promise<Collection> {
+    const response = await apiClient.put<Collection>(`/collections/${collectionId}`, data);
+    if (!response.data) {
+      throw new Error('Failed to update collection');
+    }
+    return response.data;
+  },
+
+  async deleteCollection(collectionId: string): Promise<void> {
+    await apiClient.delete(`/collections/${collectionId}`);
+  },
+
+  async addToCollection(data: AddToCollectionInput): Promise<CollectionItem> {
+    const response = await apiClient.post<CollectionItem>('/collections/items', data);
+    if (!response.data) {
+      throw new Error('Failed to add item to collection');
+    }
+    return response.data;
+  },
+
+  async removeFromCollection(collectionItemId: string): Promise<void> {
+    await apiClient.delete(`/collections/items/${collectionItemId}`);
+  },
+
+  async getCollectionItems(collectionId: string, page = 1, limit = 20): Promise<PaginatedFavoritesResponse> {
+    const response = await apiClient.get<PaginatedFavoritesResponse>(`/collections/${collectionId}/items`, {
+      params: { page, limit },
+    });
+    return response.data || {
+      data: [],
+      pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+    };
+  },
+
+  // Bulk operations
+  async moveToCollection(favoriteIds: string[], collectionId: string): Promise<void> {
+    await apiClient.post('/favorites/move', { favoriteIds, collectionId });
+  },
+
+  async copyToCollection(favoriteIds: string[], collectionId: string): Promise<void> {
+    await apiClient.post('/favorites/copy', { favoriteIds, collectionId });
+  },
 };
 
-export const fetchCollections = async (): Promise<Collection[]> => {
-	return new Promise((resolve) => setTimeout(() => resolve(collectionsStore), 200));
-};
-
-export const toggleFavorite = async (item: FavoriteItem): Promise<{ id: string; favorite: boolean }> => {
-	const exists = !!favoriteStore[item.id];
-	if (exists) {
-		delete favoriteStore[item.id];
-	} else {
-		favoriteStore[item.id] = item;
-	}
-	return new Promise((resolve) => setTimeout(() => resolve({ id: item.id, favorite: !exists }), 200));
-};
-
-export const createCollection = async (name: string, description?: string): Promise<Collection> => {
-	const collection: Collection = {
-		id: `col-${Date.now()}`,
-		name,
-		description,
-		items: [],
-		createdAt: new Date().toISOString(),
-	};
-	collectionsStore.push(collection);
-	return new Promise((resolve) => setTimeout(() => resolve(collection), 200));
-};
-
-export const addItemToCollection = async (collectionId: string, item: FavoriteItem): Promise<void> => {
-	const col = collectionsStore.find((c) => c.id === collectionId);
-	if (col) {
-		col.items.push(item);
-	}
-	return new Promise((resolve) => setTimeout(() => resolve(), 200));
-};
-
-export const removeItemFromCollection = async (collectionId: string, itemId: string): Promise<void> => {
-	const col = collectionsStore.find((c) => c.id === collectionId);
-	if (col) {
-		col.items = col.items.filter((i) => i.id !== itemId);
-	}
-	return new Promise((resolve) => setTimeout(() => resolve(), 200));
-};
-
-export default {
-	fetchFavorites,
-	fetchCollections,
-	toggleFavorite,
-	createCollection,
-	addItemToCollection,
-	removeItemFromCollection,
-};
-
+export default favoritesApi;

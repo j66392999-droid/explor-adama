@@ -3,6 +3,7 @@ export type TicketStatus = 'PENDING' | 'CONFIRMED' | 'USED' | 'CANCELLED' | 'EXP
 export interface Ticket {
 	id: string;
 	eventId: string;
+	placeId: string;
 	userId: string;
 	qrToken: string;
 	seat?: string | null;
