@@ -1,6 +1,5 @@
 import { VerificationScreen } from "../../features/auth/screens/VerificationScreen"
-import type { ComponentProps } from "react"
 
-export default function ActivityTab(props: ComponentProps<typeof VerificationScreen>) {
+export default function ActivityTab(props: any) {
   return <VerificationScreen {...props} />
 }

@@ -21,13 +21,13 @@ describe('useAuth', () => {
 
     // call login
     await act(async () => {
-      await authRef.login({ email: 'mock.user@example.com', password: '123456' })
+      await authRef.login({ email: 'mock.user@gmail.com', password: '123456' })
     })
 
     await waitFor(() => {
       const state = store.getState()
       expect(state.auth.isAuthenticated).toBeTruthy()
-      expect(state.auth.user.email).toBe('mock.user@example.com')
+      expect(state.auth.user.email).toBe('mock.user@gmail.com')
     })
   })
 })

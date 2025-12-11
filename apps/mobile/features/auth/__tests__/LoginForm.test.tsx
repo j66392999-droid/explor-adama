@@ -12,7 +12,7 @@ describe('LoginForm', () => {
     const passwordInput = getByPlaceholderText('Enter your password')
     const submitButton = getByText('Sign In')
 
-    fireEvent.changeText(emailInput, 'mock.user@example.com')
+    fireEvent.changeText(emailInput, 'mock.user@gmail.com')
     fireEvent.changeText(passwordInput, '123456')
     fireEvent.press(submitButton)
 

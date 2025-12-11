@@ -1,7 +1,7 @@
-"use client"
-
-import { ProfileScreen } from "@/features/profile/screens/ProfileScreen"
+import React from 'react';
+import { ProfileScreen } from '../../../features/profile/screens/ProfileScreen';
 
 export default function ProfileTab() {
-  return <ProfileScreen />
+  // Pass current user's ID or null for own profile
+  return <ProfileScreen />;
 }

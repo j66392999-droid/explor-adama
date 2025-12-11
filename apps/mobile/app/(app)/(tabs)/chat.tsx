@@ -1,6 +1,6 @@
 import React from 'react';
-import ChatScreen from '../../../features/chatbot/screens/ChatScreen';
+import { ChatScreen } from '../../../features/chatbot/screens/ChatScreen';
 
-export default function ChatRoute() {
+export default function ChatTab() {
   return <ChatScreen />;
 }

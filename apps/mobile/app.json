@@ -15,7 +15,9 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show nearby places and events.",
         "NSLocationAlwaysUsageDescription": "This app needs access to your location to show nearby places and events.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       },
       "supportsTablet": true,
       "bundleIdentifier": "com.natk3y0.mobile"
@@ -58,7 +60,7 @@
           }
         }
       ],
-            "expo-secure-store",
+      "expo-secure-store",
       [
         "expo-location",
         {
@@ -77,7 +79,8 @@
           "icon": "./assets/notification-icon.png",
           "color": "#ffffff"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

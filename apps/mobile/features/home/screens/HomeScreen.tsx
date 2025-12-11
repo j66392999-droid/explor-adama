@@ -7,7 +7,7 @@ import {
   Image,
   TouchableOpacity,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import useFallbackNavigation from '../../../shared/hooks/navigation/useFallbackNavigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '../../../shared/hooks/state/useAppSelector';
@@ -30,7 +30,7 @@ import { Ionicons } from '@expo/vector-icons';
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export const HomeScreen: React.FC = () => {
-  const navigation = useNavigation<HomeScreenNavigationProp>();
+  const navigation = useFallbackNavigation() as any;
   const { user } = useAppSelector((state) => state.auth);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -73,7 +73,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleProfilePress = () => {
-    navigation.navigate('Profile');
+    (navigation as any).navigate('profile');
   };
 
   if (isLoading && !homeData) {

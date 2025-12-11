@@ -1,104 +1,202 @@
-import React, { useMemo, useState } from 'react';
-import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../../components/ui/Typography/Text';
+import { Button } from '../../../components/ui/Button';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import { Comment } from '../types/social.types';
+import { formatDistanceToNow } from '../../../shared/utils/formatters';
+import * as Haptics from 'expo-haptics';
 
-export interface CommentCardProps {
-  id: string;
-  authorName: string;
-  authorAvatar?: string | null;
-  text: string;
-  createdAt?: string;
-  initialLiked?: boolean;
-  onLike?: (id: string, liked: boolean) => void;
+interface CommentCardProps {
+  comment: Comment;
+  onLikePress: (commentId: string) => void;
+  onReplyPress: (commentId: string, username: string) => void;
+  onUserPress: (userId: string) => void;
+  onMenuPress?: (commentId: string) => void;
+  isReply?: boolean;
   style?: any;
 }
 
 export const CommentCard: React.FC<CommentCardProps> = ({
-  id,
-  authorName,
-  authorAvatar,
-  text,
-  createdAt,
-  initialLiked = false,
-  onLike,
+  comment,
+  onLikePress,
+  onReplyPress,
+  onUserPress,
+  onMenuPress,
+  isReply = false,
   style,
 }) => {
-  const { colors, spacing } = useTheme();
-  const [liked, setLiked] = useState<boolean>(initialLiked);
+  const { colors } = useTheme();
+  const [showReplies, setShowReplies] = useState(false);
 
-  const timeLabel = useMemo(() => {
-    if (!createdAt) return '';
-    try {
-      const d = new Date(createdAt);
-      return d.toLocaleString();
-    } catch {
-      return createdAt;
-    }
-  }, [createdAt]);
+  const handleLikePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    onLikePress(comment.id);
+  };
 
-  const handleLike = () => {
-    const next = !liked;
-    setLiked(next);
-    onLike?.(id, next);
+  const handleReplyPress = () => {
+    onReplyPress(comment.id, comment.user.name);
+  };
+
+  const handleUserPress = () => {
+    onUserPress(comment.userId);
+  };
+
+  const toggleReplies = () => {
+    setShowReplies(!showReplies);
   };
 
   return (
-    <View style={[styles.container, { borderColor: colors.border, padding: spacing.md }, style]}>
-      <Image
-        source={{ uri: authorAvatar || 'https://via.placeholder.com/48' }}
-        style={[styles.avatar, { borderRadius: 999 }]}
-      />
-
-      <View style={styles.content}>
-        <View style={styles.headerRow}>
-          <Text variant="label" style={{ marginRight: 8 }}>{authorName}</Text>
-          <Text variant="caption" style={{ color: colors.textSecondary }}>{timeLabel}</Text>
+    <View style={[styles.container, isReply && styles.replyContainer, style]}>
+      {/* User info */}
+      <TouchableOpacity style={styles.userInfo} onPress={handleUserPress}>
+        <Image
+          source={{ uri: comment.user.avatar || 'https://via.placeholder.com/32' }}
+          style={styles.avatar}
+        />
+        <View>
+          <Text style={styles.userName}>{comment.user.name}</Text>
+          <Text style={styles.time}>{formatDistanceToNow(comment.createdAt)}</Text>
         </View>
+      </TouchableOpacity>
 
-        <Text variant="body" style={{ marginTop: 6 }}>{text}</Text>
+      {/* Comment content */}
+      <Text style={styles.content}>{comment.content}</Text>
 
-        <View style={styles.actionsRow}>
-          <TouchableOpacity onPress={handleLike} style={styles.actionButton}>
-            <Text variant="caption" style={{ color: liked ? colors.primary : colors.textSecondary }}>
-              {liked ? 'Liked' : 'Like'}
-            </Text>
+      {/* Actions */}
+      <View style={styles.actions}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleLikePress}>
+          <Ionicons
+            name={comment.isLiked ? 'heart' : 'heart-outline'}
+            size={16}
+            color={comment.isLiked ? colors.error : colors.textSecondary}
+          />
+          <Text style={styles.actionText}>{comment.likeCount}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.actionButton} onPress={handleReplyPress}>
+          <Ionicons name="arrow-undo" size={16} color={colors.textSecondary} />
+          <Text style={styles.actionText}>Reply</Text>
+        </TouchableOpacity>
+
+        {onMenuPress && (
+          <TouchableOpacity 
+            style={styles.menuButton} 
+            onPress={() => onMenuPress(comment.id)}
+          >
+            <Ionicons name="ellipsis-horizontal" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
-        </View>
+        )}
       </View>
+
+      {/* Replies */}
+      {comment.replyCount > 0 && (
+        <TouchableOpacity style={styles.repliesButton} onPress={toggleReplies}>
+          <Ionicons
+            name={showReplies ? 'chevron-up' : 'chevron-down'}
+            size={14}
+            color={colors.primary}
+          />
+          <Text style={styles.repliesText}>
+            {showReplies ? 'Hide' : 'View'} {comment.replyCount} replies
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Nested replies */}
+      {showReplies && comment.replies && comment.replies.length > 0 && (
+        <View style={styles.repliesContainer}>
+          {comment.replies.map((reply) => (
+            <CommentCard
+              key={reply.id}
+              comment={reply}
+              onLikePress={onLikePress}
+              onReplyPress={onReplyPress}
+              onUserPress={onUserPress}
+              onMenuPress={onMenuPress}
+              isReply={true}
+              style={styles.nestedReply}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  replyContainer: {
+    paddingLeft: 40,
+    borderBottomWidth: 0,
+  },
+  userInfo: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
+    alignItems: 'center',
+    marginBottom: 8,
   },
   avatar: {
-    width: 48,
-    height: 48,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     marginRight: 12,
   },
+  userName: {
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  time: {
+    fontSize: 12,
+    opacity: 0.6,
+  },
   content: {
-    flex: 1,
+    fontSize: 16,
+    lineHeight: 22,
+    marginBottom: 12,
   },
-  headerRow: {
+  actions: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  actionsRow: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: 16,
   },
   actionButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionText: {
+    fontSize: 12,
+    opacity: 0.7,
+  },
+  menuButton: {
+    marginLeft: 'auto',
+    padding: 4,
+  },
+  repliesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 4,
+  },
+  repliesText: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  repliesContainer: {
+    marginTop: 12,
+  },
+  nestedReply: {
+    marginTop: 8,
   },
 });
-
-export default CommentCard;

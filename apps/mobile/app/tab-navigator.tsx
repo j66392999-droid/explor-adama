@@ -8,9 +8,9 @@ import { useTheme } from '../shared/hooks/ui/useTheme';
 // Import tab screens
 import {HomeScreen} from '../features/home/screens/HomeScreen';
 import {FavoritesScreen} from '../features/favorites/screens/FavoritesScreen';
-import BlogScreen from '../features/social/screens/BlogFeedScreen';
-import ActivityScreen from '../features/notifications/screens/NotificationsScreen';
-import ChatScreen from '../features/chatbot/screens/ChatScreen';
+import {BlogFeedScreen} from '../features/social/screens/BlogFeedScreen';
+import {NotificationsScreen} from '../features/notifications/screens/NotificationsScreen';
+import{ChatScreen } from '../features/chatbot/screens/ChatScreen';
 
 const Tab = createBottomTabNavigator<RootStackParamList>();
 
@@ -49,7 +49,7 @@ export default function TabNavigator() {
       />
       <Tab.Screen
         name="Blog"
-        component={BlogScreen}
+        component={BlogFeedScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="add-circle" size={size} color={color} />
@@ -58,7 +58,7 @@ export default function TabNavigator() {
       />
       <Tab.Screen
         name="Activity"
-        component={ActivityScreen}
+        component={NotificationsScreen}
         options={{
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications" size={size} color={color} />

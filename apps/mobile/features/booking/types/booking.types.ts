@@ -1,38 +1,45 @@
-import { Event, Place } from '../../home/types/home.types';
-import { PaymentStatus, TicketStatus } from '../../../shared/types/api.types';
+import { Place, Event } from '../../home/types/home.types';
+import { UserProfile } from '../../social/types/social.types';
+import { PaymentProvider, PaymentStatus, TicketStatus } from '../../../shared/types/api.types';
 
 export interface Booking {
   id: string;
   userId: string;
+  user?: UserProfile;
   eventId: string;
-  event: Event;
+  event?: Event;
+  placeId?: string;
+  place?: Place;
   quantity: number;
-  subTotal: number;
+  subtotal: number;
   tax: number;
   fees: number;
   total: number;
-  status: BookingStatus;
+  status: BookingStatus['type'];
   transactionId?: string;
   payment?: Payment;
   tickets: Ticket[];
+  notes?: string;
   specialRequests?: string;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string;
+  bookingDate: string;
+  checkInTime?: string;
+  checkOutTime?: string;
 }
 
 export interface Ticket {
   id: string;
-  bookingId?: string;
+  bookingId: string;
   userId: string;
   eventId: string;
-  event: Event;
   qrToken: string;
   seat?: string;
   status: TicketStatus;
   issuedAt: string;
   usedAt?: string;
   expiresAt?: string;
-  createdAt: string;
+  event: Event;
 }
 
 export interface Payment {
@@ -44,25 +51,15 @@ export interface Payment {
   currency: string;
   status: PaymentStatus;
   metadata?: any;
-  bookingId?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface BookingFormData {
-  eventId: string;
-  quantity: number;
-  date: string;
-  timeSlot?: string;
-  specialRequests?: string;
-  guestInfo?: GuestInfo[];
-}
-
-export interface GuestInfo {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
+export interface BookingStatus {
+  type: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'REFUNDED';
+  label: string;
+  color: string;
+  icon: string;
 }
 
 export interface TimeSlot {
@@ -72,100 +69,140 @@ export interface TimeSlot {
   available: boolean;
   price?: number;
   capacity?: number;
-  bookedCount?: number;
+  bookedCount: number;
 }
 
-export interface BookingSummary {
-  subTotal: number;
-  tax: number;
-  fees: number;
-  total: number;
-  discount?: number;
-}
-
-export interface CreateBookingRequest {
-  eventId: string;
-  quantity: number;
+export interface DateAvailability {
   date: string;
-  timeSlot?: string;
+  available: boolean;
+  price?: number;
+  slots: TimeSlot[];
+}
+
+export interface GuestCount {
+  adults: number;
+  children: number;
+  infants: number;
+}
+
+export interface BookingFormData {
+  eventId?: string;
+  placeId?: string;
+  date: string;
+  timeSlotId?: string;
+  guests: GuestCount;
   specialRequests?: string;
-  guestInfo?: GuestInfo[];
+  contactInfo: {
+    fullName: string;
+    email: string;
+    phone: string;
+  };
   paymentMethod?: string;
 }
 
-export interface CreateBookingResponse {
-  booking: Booking;
-  paymentIntent?: any;
+export interface BookingSummary {
+  basePrice: number;
+  serviceFee: number;
+  tax: number;
+  discount?: number;
+  total: number;
+  currency: string;
 }
 
-// Enums
-export type BookingStatus = 
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'CANCELLED'
-  | 'COMPLETED'
-  | 'REFUNDED';
-
-export type PaymentProvider = 
-  | 'CHAPA'
-  | 'STRIPE'
-  | 'MANUAL'
-  | 'CASH';
-
-export type TicketType = 
-  | 'STANDARD'
-  | 'VIP'
-  | 'PREMIUM'
-  | 'GROUP';
-
-// API Response Types
-export interface BookingsResponse {
-  bookings: Booking[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+export interface BookingFilters {
+  status?: BookingStatus['type'][];
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  sortBy: 'date' | 'total' | 'status';
+  sortOrder: 'asc' | 'desc';
 }
 
-export interface TimeSlotsResponse {
-  timeSlots: TimeSlot[];
-  date: string;
-  eventId: string;
+export interface CancellationPolicy {
+  type: 'FLEXIBLE' | 'MODERATE' | 'STRICT' | 'NON_REFUNDABLE';
+  description: string;
+  refundPercentage: number;
+  cutoffHours: number;
 }
 
-export interface AvailabilityResponse {
-  available: boolean;
-  availableSpots: number;
-  date: string;
-  timeSlot?: string;
-  eventId: string;
+export interface BookingConfirmation {
+  bookingId: string;
+  confirmationNumber: string;
+  qrCodeUrl: string;
+  tickets: Ticket[];
+  receiptUrl?: string;
+  instructions?: string[];
 }
 
-// Validation Types
-export interface BookingValidationResult {
-  isValid: boolean;
-  errors: Record<string, string>;
-  availability?: AvailabilityResponse;
+export interface BookingAnalytics {
+  totalBookings: number;
+  upcomingBookings: number;
+  totalSpent: number;
+  averageBookingValue: number;
+  favoriteCategories: string[];
+  bookingTrend: {
+    date: string;
+    count: number;
+    revenue: number;
+  }[];
 }
 
-// Hook Return Types
-export interface UseBookingReturn {
-  bookings: Booking[];
-  currentBooking: Booking | null;
-  isLoading: boolean;
-  error: string | null;
-  bookingDetail: Booking | null;
-  createBooking: (data: CreateBookingRequest) => Promise<Booking>;
-  getBooking: (id: string) => Promise<Booking>;
-  getBookings: () => Promise<Booking[]>;
-  cancelBooking: (id: string) => Promise<void>;
-  updateBooking: (id: string, updates: Partial<Booking>) => Promise<Booking>;
-  checkAvailability: (eventId: string, date: string, timeSlot?: string) => Promise<AvailabilityResponse>;
-  getTimeSlots: (eventId: string, date: string) => Promise<TimeSlot[]>;
-  validateBooking: (data: BookingFormData, event: Event) => BookingValidationResult;
-  calculateSummary: (event: Event, quantity: number) => BookingSummary;
-  getBookingDetail: (id: string) => Promise<void>;
-  getEventDetail: (eventId: string) => Promise<Event>;
-}
+export const BOOKING_STATUSES: Record<BookingStatus['type'], BookingStatus> = {
+  PENDING: {
+    type: 'PENDING',
+    label: 'Pending',
+    color: '#FF9500',
+    icon: 'time',
+  },
+  CONFIRMED: {
+    type: 'CONFIRMED',
+    label: 'Confirmed',
+    color: '#34C759',
+    icon: 'checkmark-circle',
+  },
+  CANCELLED: {
+    type: 'CANCELLED',
+    label: 'Cancelled',
+    color: '#FF3B30',
+    icon: 'close-circle',
+  },
+  COMPLETED: {
+    type: 'COMPLETED',
+    label: 'Completed',
+    color: '#007AFF',
+    icon: 'checkmark-done',
+  },
+  REFUNDED: {
+    type: 'REFUNDED',
+    label: 'Refunded',
+    color: '#AF52DE',
+    icon: 'arrow-back',
+  },
+};
+
+export const CANCELLATION_POLICIES: CancellationPolicy[] = [
+  {
+    type: 'FLEXIBLE',
+    description: 'Free cancellation up to 24 hours before the event',
+    refundPercentage: 100,
+    cutoffHours: 24,
+  },
+  {
+    type: 'MODERATE',
+    description: 'Free cancellation up to 48 hours before the event. 50% refund after that.',
+    refundPercentage: 50,
+    cutoffHours: 48,
+  },
+  {
+    type: 'STRICT',
+    description: '50% refund up to 7 days before the event. No refund after that.',
+    refundPercentage: 50,
+    cutoffHours: 168,
+  },
+  {
+    type: 'NON_REFUNDABLE',
+    description: 'No refunds or cancellations',
+    refundPercentage: 0,
+    cutoffHours: 0,
+  },
+];

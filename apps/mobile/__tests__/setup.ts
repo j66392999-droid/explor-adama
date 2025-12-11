@@ -2,6 +2,10 @@
 // @ts-nocheck
 // This file sets up MSW server and other test utilities
 import 'react-native-gesture-handler/jestSetup'
+// Mock native AsyncStorage for Jest environment
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+)
 import { server } from './mocks/server'
 
 // Start MSW before all tests

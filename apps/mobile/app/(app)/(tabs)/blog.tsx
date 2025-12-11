@@ -1,5 +1,6 @@
-import { BlogFeedScreen } from "@/features/social/screens/BlogFeedScreen"
+import React from 'react';
+import { BlogFeedScreen } from '../../../features/social/screens/BlogFeedScreen';
 
 export default function BlogTab() {
-  return <BlogFeedScreen />
+  return <BlogFeedScreen />;
 }

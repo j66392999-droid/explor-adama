@@ -3,7 +3,7 @@ export const user = {
   id: 'user-1',
   firstName: 'Mock',
   lastName: 'User',
-  email: 'mock.user@example.com',
+  email: 'mock.user@gmail.com',
 }
 
 export const tokens = {

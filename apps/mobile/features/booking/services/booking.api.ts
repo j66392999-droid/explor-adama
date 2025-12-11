@@ -1,130 +1,182 @@
 import { apiClient } from '../../../shared/services/api/client';
-import { ApiResponse } from '../../../shared/types/api.types';
+import { PaginatedResponse } from '../../../shared/types/api.types';
 import {
   Booking,
-  CreateBookingRequest,
-  CreateBookingResponse,
-  BookingsResponse,
-  TimeSlotsResponse,
-  AvailabilityResponse,
+  Ticket,
+  Payment,
+  BookingFormData,
+  BookingSummary,
+  DateAvailability,
+  TimeSlot,
+  BookingFilters,
+  BookingConfirmation,
+  BookingAnalytics,
 } from '../types/booking.types';
 
+const emptyPage = <T>(page = 1, limit = 10): PaginatedResponse<T> => ({
+  data: [],
+  pagination: { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+});
+
 export const bookingApi = {
-  // Create a new booking
-  createBooking: async (data: CreateBookingRequest): Promise<CreateBookingResponse> => {
-    const response = await apiClient.post<CreateBookingResponse>(
-      '/bookings',
-      data
+  // Bookings
+  async getBookings(
+    page = 1,
+    limit = 20,
+    filters?: BookingFilters
+  ): Promise<PaginatedResponse<Booking>> {
+    const params: any = { page, limit, ...filters };
+    const res = await apiClient.get<PaginatedResponse<Booking>>('/bookings', { params });
+    return res.data ?? emptyPage<Booking>(page, limit);
+  },
+
+  async getBooking(bookingId: string): Promise<Booking> {
+    const res = await apiClient.get<Booking>(`/bookings/${bookingId}`);
+    return res.data!;
+  },
+
+  async createBooking(data: BookingFormData): Promise<BookingConfirmation> {
+    const res = await apiClient.post<BookingConfirmation>('/bookings', data);
+    return res.data!;
+  },
+
+  async updateBooking(bookingId: string, updates: Partial<Booking>): Promise<Booking> {
+    const res = await apiClient.patch<Booking>(`/bookings/${bookingId}`, updates);
+    return res.data!;
+  },
+
+  async cancelBooking(bookingId: string, reason?: string): Promise<Booking> {
+    const res = await apiClient.post<Booking>(`/bookings/${bookingId}/cancel`, { reason });
+    return res.data!;
+  },
+
+  async requestRefund(bookingId: string, reason: string): Promise<{ success: boolean; message: string }> {
+    const res = await apiClient.post<{ success: boolean; message: string }>(
+      `/bookings/${bookingId}/refund`,
+      { reason }
     );
-    return response.data as CreateBookingResponse;
+    return res.data!;
   },
 
-  // Get booking by ID
-  getBooking: async (id: string): Promise<Booking> => {
-    const response = await apiClient.get<Booking>(
-      `/bookings/${id}`
+  // Availability
+  async checkAvailability(
+    eventId?: string,
+    placeId?: string,
+    date?: string
+  ): Promise<DateAvailability[]> {
+    const params: any = {};
+    if (eventId) params.eventId = eventId;
+    if (placeId) params.placeId = placeId;
+    if (date) params.date = date;
+
+    const res = await apiClient.get<DateAvailability[]>('/bookings/availability', { params });
+    return res.data ?? [];
+  },
+
+  async getTimeSlots(eventId: string, date: string): Promise<TimeSlot[]> {
+    const res = await apiClient.get<TimeSlot[]>(`/events/${eventId}/timeslots`, {
+      params: { date },
+    });
+    return res.data ?? [];
+  },
+
+  // Tickets
+  async getTickets(bookingId: string): Promise<Ticket[]> {
+    const res = await apiClient.get<Ticket[]>(`/bookings/${bookingId}/tickets`);
+    return res.data ?? [];
+  },
+
+  async validateTicket(ticketId: string): Promise<{ valid: boolean; message?: string }> {
+    const res = await apiClient.get<{ valid: boolean; message?: string }>(
+      `/tickets/${ticketId}/validate`
     );
-    return response.data as Booking;
+    return res.data!;
   },
 
-  // Get user's bookings
-  getBookings: async (params?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-  }): Promise<BookingsResponse> => {
-    const response = await apiClient.get<BookingsResponse>(
-      '/bookings',
-      { params }
-    );
-    return response.data as BookingsResponse;
+  async markTicketAsUsed(ticketId: string): Promise<Ticket> {
+    const res = await apiClient.patch<Ticket>(`/tickets/${ticketId}/use`);
+    return res.data!;
   },
 
-  // Cancel a booking
-  cancelBooking: async (id: string): Promise<void> => {
-    await apiClient.patch(`/bookings/${id}/cancel`);
+  // Payments
+  async getPayments(page = 1, limit = 20): Promise<PaginatedResponse<Payment>> {
+    const res = await apiClient.get<PaginatedResponse<Payment>>('/payments', {
+      params: { page, limit },
+    });
+    return res.data ?? emptyPage<Payment>(page, limit);
   },
 
-  // Update booking
-  updateBooking: async (id: string, updates: Partial<Booking>): Promise<Booking> => {
-    const response = await apiClient.patch<Booking>(
-      `/bookings/${id}`,
-      updates
-    );
-    return response.data as Booking;
+  async createPaymentIntent(bookingId: string, paymentMethod?: string): Promise<{
+    clientSecret: string;
+    paymentIntentId: string;
+    amount: number;
+    currency: string;
+  }> {
+    const res = await apiClient.post<{
+      clientSecret: string;
+      paymentIntentId: string;
+      amount: number;
+      currency: string;
+    }>(`/bookings/${bookingId}/payment-intent`, { paymentMethod });
+    return res.data!;
   },
 
-  // Check availability
-  checkAvailability: async (
-    eventId: string, 
-    date: string, 
-    timeSlot?: string
-  ): Promise<AvailabilityResponse> => {
-    const response = await apiClient.get<AvailabilityResponse>(
-      `/bookings/availability`,
-      { 
-        params: { 
-          eventId, 
-          date, 
-          timeSlot 
-        } 
-      }
-    );
-    return response.data as AvailabilityResponse;
+  async confirmPayment(paymentIntentId: string): Promise<Payment> {
+    const res = await apiClient.post<Payment>(`/payments/${paymentIntentId}/confirm`);
+    return res.data!;
   },
 
-  // Get available time slots
-  getTimeSlots: async (eventId: string, date: string): Promise<TimeSlotsResponse> => {
-    const response = await apiClient.get<TimeSlotsResponse>(
-      `/bookings/time-slots`,
-      { 
-        params: { 
-          eventId, 
-          date 
-        } 
-      }
-    );
-    return response.data as TimeSlotsResponse;
+  async getPaymentMethods(): Promise<string[]> {
+    const res = await apiClient.get<string[]>('/payments/methods');
+    return res.data ?? [];
   },
 
-  // Get booking summary
-  getBookingSummary: async (data: {
-    eventId: string;
-    quantity: number;
+  // Summary & Calculations
+  async calculatePrice(data: {
+    eventId?: string;
+    placeId?: string;
     date: string;
-    timeSlot?: string;
-  }): Promise<any> => {
-    const response = await apiClient.post<any>(
-      '/bookings/summary',
-      data
-    );
-    return response.data as Booking;
+    timeSlotId?: string;
+    guests: { adults: number; children: number; infants: number };
+  }): Promise<BookingSummary> {
+    const res = await apiClient.post<BookingSummary>('/bookings/calculate-price', data);
+    return res.data!;
   },
 
-  // Confirm booking payment
-  confirmPayment: async (bookingId: string, paymentData: any): Promise<Booking> => {
-    const response = await apiClient.post<Booking>(
-      `/bookings/${bookingId}/confirm-payment`,
-      paymentData
-    );
-    return response.data as Booking;
+  // Analytics
+  async getBookingAnalytics(): Promise<BookingAnalytics> {
+    const res = await apiClient.get<BookingAnalytics>('/bookings/analytics');
+    return res.data!;
   },
 
-  // Send booking confirmation
-  sendConfirmation: async (bookingId: string): Promise<void> => {
-    await apiClient.post(`/bookings/${bookingId}/send-confirmation`);
+  async getUpcomingBookings(): Promise<Booking[]> {
+    const res = await apiClient.get<Booking[]>('/bookings/upcoming');
+    return res.data ?? [];
   },
 
-  // Get booking statistics
-  getStats: async (): Promise<{
-    totalBookings: number;
-    upcomingBookings: number;
-    pastBookings: number;
-    totalSpent: number;
-  }> => {
-    const response = await apiClient.get<any>(
-      '/bookings/stats'
+  // Calendar
+  async getBookingCalendar(year: number, month: number): Promise<{
+    date: string;
+    hasBookings: boolean;
+    bookingCount: number;
+  }[]> {
+    const res = await apiClient.get<{
+      date: string;
+      hasBookings: boolean;
+      bookingCount: number;
+    }[]>('/bookings/calendar', { params: { year, month } });
+    return res.data ?? [];
+  },
+
+  // Reminders
+  async setReminder(bookingId: string, hoursBefore: number): Promise<void> {
+    await apiClient.post(`/bookings/${bookingId}/reminders`, { hoursBefore });
+  },
+
+  async getReminders(): Promise<{ bookingId: string; reminderTime: string; hoursBefore: number }[]> {
+    const res = await apiClient.get<{ bookingId: string; reminderTime: string; hoursBefore: number }[]>(
+      '/bookings/reminders'
     );
-    return response.data;
+    return res.data ?? [];
   },
 };

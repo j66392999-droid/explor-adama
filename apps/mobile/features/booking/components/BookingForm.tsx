@@ -4,318 +4,482 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../../components/ui/Typography/Text';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { Event } from '../../home/types/home.types';
-import { GuestCounter } from './GuestCounter';
+import { Loading } from '../../../components/ui/Loading';
 import { DatePicker } from './DatePicker';
+import { GuestCounter } from './GuestCounter';
 import { TimeSlotPicker } from './TimeSlotPicker';
-import { useBooking } from '../hooks/useBooking';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
+import { BookingFormData, GuestCount } from '../types/booking.types';
+import { formatCurrency, formatDate } from '../../../shared/utils/formatters';
+import * as Haptics from 'expo-haptics';
 
 interface BookingFormProps {
-  event: Event;
-  onSubmit: (bookingData: any) => void;
+  eventId?: string;
+  placeId?: string;
+  eventTitle?: string;
+  placeName?: string;
+  basePrice: number;
+  maxGuests?: number;
+  onSubmit: (data: BookingFormData) => Promise<void>;
+  onCancel: () => void;
   isLoading?: boolean;
 }
 
 export const BookingForm: React.FC<BookingFormProps> = ({
-  event,
+  eventId,
+  placeId,
+  eventTitle,
+  placeName,
+  basePrice,
+  maxGuests = 10,
   onSubmit,
+  onCancel,
   isLoading = false,
 }) => {
   const { colors } = useTheme();
-  const { calculateSummary, validateBooking, checkAvailability } = useBooking();
-  
-  const [formData, setFormData] = useState({
-    quantity: 1,
+
+  const [formData, setFormData] = useState<BookingFormData>({
+    eventId,
+    placeId,
     date: new Date().toISOString().split('T')[0],
-    timeSlot: '',
+    guests: {
+      adults: 1,
+      children: 0,
+      infants: 0,
+    },
+    contactInfo: {
+      fullName: '',
+      email: '',
+      phone: '',
+    },
     specialRequests: '',
   });
-  const [availability, setAvailability] = useState<any>(null);
-  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
 
-  const updateFormData = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
+  const [calculatedPrice, setCalculatedPrice] = useState({
+    basePrice: basePrice,
+    serviceFee: basePrice * 0.1,
+    tax: basePrice * 0.15,
+    total: basePrice * 1.25,
+  });
 
-  // Check availability when form data changes
   useEffect(() => {
-    const checkAvailability = async (id: string, date: string, timeSlot: string) => {
-      if (!formData.date) return;
-
-      setIsCheckingAvailability(true);
-      try {
-        const availabilityResult = await checkAvailability(
-          event.id,
-          formData.date,
-          formData.timeSlot
-        );
-        setAvailability(availabilityResult);
-      } catch (error) {
-        console.error('Failed to check availability:', error);
-      } finally {
-        setIsCheckingAvailability(false);
-      }
-    };
-
-    checkAvailability(event.id, formData.date, formData.timeSlot);
-  }, [event.id, formData.date, formData.timeSlot, checkAvailability]);
-
-  const calculateTotal = () => {
-    return calculateSummary(event, formData.quantity);
-  };
-
-  const handleSubmit = () => {
-    const validationError = validateBooking(
-      { ...formData, eventId: event.id },
-      event
-    );
-
-    if (validationError) {
-      let message = '';
-      if (typeof validationError === 'string') {
-        message = validationError;
-      } else if (Array.isArray(validationError)) {
-        message = validationError.join('\n');
-      } else if (validationError && (validationError as any).message) {
-        message = (validationError as any).message;
-      } else {
-        try {
-          message = JSON.stringify(validationError);
-        } catch {
-          message = 'Invalid booking information';
-        }
-      }
-
-      Alert.alert('Error', message);
-      return;
-    }
-
-    if (availability && !availability.available) {
-      Alert.alert('Not Available', 'The selected date/time is no longer available. Please choose another option.');
-      return;
-    }
-
-    const totals = calculateTotal();
+    // Calculate price based on guests
+    const totalGuests = formData.guests.adults + formData.guests.children;
+    const newBasePrice = basePrice * totalGuests;
+    const serviceFee = newBasePrice * 0.1;
+    const tax = newBasePrice * 0.15;
     
-    onSubmit({
-      eventId: event.id,
-      ...formData,
-      ...totals,
+    setCalculatedPrice({
+      basePrice: newBasePrice,
+      serviceFee,
+      tax,
+      total: newBasePrice + serviceFee + tax,
     });
+  }, [formData.guests, basePrice]);
+
+  const handleDateChange = (date: string) => {
+    setFormData(prev => ({ ...prev, date }));
   };
 
-  const totals = calculateTotal();
-  const isAvailable = availability?.available !== false;
+  const handleGuestChange = (guests: GuestCount) => {
+    setFormData(prev => ({ ...prev, guests }));
+  };
+
+  const handleTimeSlotChange = (timeSlotId: string) => {
+    setFormData(prev => ({ ...prev, timeSlotId }));
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.');
+      setFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...(prev[parent as keyof BookingFormData] as Record<string, any>),
+          [child]: value,
+        },
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Partial<Record<string, string>> = {};
+
+    if (!formData.contactInfo.fullName.trim()) {
+      newErrors['contactInfo.fullName'] = 'Full name is required';
+    }
+
+    if (!formData.contactInfo.email.trim()) {
+      newErrors['contactInfo.email'] = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactInfo.email)) {
+      newErrors['contactInfo.email'] = 'Please enter a valid email';
+    }
+
+    if (!formData.contactInfo.phone.trim()) {
+      newErrors['contactInfo.phone'] = 'Phone number is required';
+    }
+
+    const totalGuests = formData.guests.adults + formData.guests.children + formData.guests.infants;
+    if (totalGuests > maxGuests) {
+      newErrors['guests'] = `Maximum ${maxGuests} guests allowed`;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+
+    try {
+      await onSubmit(formData);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to create booking. Please try again.');
+    }
+  };
+
+  const renderPriceBreakdown = () => (
+    <View style={styles.priceSection}>
+      <Text style={styles.sectionTitle}>Price Breakdown</Text>
+      
+      <View style={styles.priceRow}>
+        <Text style={styles.priceLabel}>
+          {basePrice} × {formData.guests.adults + formData.guests.children} guests
+        </Text>
+        <Text style={styles.priceValue}>
+          {formatCurrency(calculatedPrice.basePrice, 'ETB')}
+        </Text>
+      </View>
+      
+      <View style={styles.priceRow}>
+        <Text style={styles.priceLabel}>Service fee</Text>
+        <Text style={styles.priceValue}>
+          {formatCurrency(calculatedPrice.serviceFee, 'ETB')}
+        </Text>
+      </View>
+      
+      <View style={styles.priceRow}>
+        <Text style={styles.priceLabel}>Tax</Text>
+        <Text style={styles.priceValue}>
+          {formatCurrency(calculatedPrice.tax, 'ETB')}
+        </Text>
+      </View>
+      
+      <View style={[styles.priceRow, styles.totalRow]}>
+        <Text style={styles.totalLabel}>Total</Text>
+        <Text style={styles.totalValue}>
+          {formatCurrency(calculatedPrice.total, 'ETB')}
+        </Text>
+      </View>
+    </View>
+  );
+
+  const renderBookingDetails = () => (
+    <View style={styles.detailsSection}>
+      <Text style={styles.sectionTitle}>Booking Details</Text>
+      
+      <View style={styles.detailRow}>
+        <Ionicons name="calendar" size={20} color={colors.textSecondary} />
+        <Text style={styles.detailText}>
+          {formatDate(formData.date, 'medium')}
+        </Text>
+      </View>
+      
+      <View style={styles.detailRow}>
+        <Ionicons name="people" size={20} color={colors.textSecondary} />
+        <Text style={styles.detailText}>
+          {formData.guests.adults} adult{formData.guests.adults !== 1 ? 's' : ''}
+          {formData.guests.children > 0 && `, ${formData.guests.children} child${formData.guests.children !== 1 ? 'ren' : ''}`}
+          {formData.guests.infants > 0 && `, ${formData.guests.infants} infant${formData.guests.infants !== 1 ? 's' : ''}`}
+        </Text>
+      </View>
+      
+      {eventTitle && (
+        <View style={styles.detailRow}>
+          <Ionicons name="ticket" size={20} color={colors.textSecondary} />
+          <Text style={styles.detailText}>{eventTitle}</Text>
+        </View>
+      )}
+      
+      {placeName && (
+        <View style={styles.detailRow}>
+          <Ionicons name="location" size={20} color={colors.textSecondary} />
+          <Text style={styles.detailText}>{placeName}</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  if (isLoading) {
+    return <Loading message="Processing booking..." />;
+  }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Text variant="large" style={styles.title}>Book Tickets</Text>
-      
-      <View style={styles.eventInfo}>
-        <Text variant="large" numberOfLines={2}>{event.title}</Text>
-        <Text style={styles.eventDate}>
-          {new Date(event.date).toLocaleDateString()}
-        </Text>
-        {event.place && (
-          <Text style={styles.eventLocation}>{event.place.name}</Text>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Complete Your Booking</Text>
+          <Text style={styles.headerSubtitle}>
+            Please fill in the details below
+          </Text>
+        </View>
+
+        {/* Booking Details */}
+        {renderBookingDetails()}
+
+        {/* Date Selection */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Select Date</Text>
+          <DatePicker
+            selectedDate={formData.date}
+            onDateChange={handleDateChange}
+            minDate={new Date().toISOString().split('T')[0]}
+          />
+        </View>
+
+        {/* Time Slot Selection */}
+        {eventId && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Select Time</Text>
+            <TimeSlotPicker
+              eventId={eventId}
+              selectedDate={formData.date}
+              onSlotSelect={handleTimeSlotChange}
+            />
+          </View>
         )}
-        {event.price !== undefined && event.price > 0 && (
-          <Text style={styles.eventPrice}>
-            ${event.price.toFixed(2)} per ticket
-          </Text>
-        )}
-      </View>
 
-      {/* Availability Status */}
-      {formData.date && (
-        <View style={[
-          styles.availabilityStatus,
-          { backgroundColor: isAvailable ? '#E8F5E8' : '#FFEBEE' }
-        ]}>
-          <Text style={[
-            styles.availabilityText,
-            { color: isAvailable ? '#4CAF50' : '#F44336' }
-          ]}>
-            {isCheckingAvailability 
-              ? 'Checking availability...' 
-              : isAvailable 
-                ? `✓ ${availability?.availableSpots || 'Multiple'} spots available`
-                : '✗ Not available for selected date/time'
-            }
-          </Text>
+        {/* Guest Selection */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Guests</Text>
+          <GuestCounter
+            guests={formData.guests}
+            onChange={handleGuestChange}
+            maxGuests={maxGuests}
+            error={errors.guests}
+          />
         </View>
-      )}
 
-      <GuestCounter
-        value={formData.quantity}
-        onChange={(value) => updateFormData('quantity', value)}
-        maxGuests={event.capacity}
-        disabled={!isAvailable}
-        style={styles.section}
-      />
-
-      <DatePicker
-        value={formData.date}
-        onChange={(date) => updateFormData('date', date)}
-        minDate={new Date().toISOString().split('T')[0]}
-        disabled={!event.date}
-        style={styles.section}
-      />
-
-      {event.startTime && (
-        <TimeSlotPicker
-          value={formData.timeSlot}
-          onChange={(slot) => updateFormData('timeSlot', slot)}
-          eventId={event.id}
-          selectedDate={formData.date}
-          disabled={!isAvailable}
-          style={styles.section}
-        />
-      )}
-
-      <Input
-        label="Special Requests"
-        placeholder="Any special requirements or notes..."
-        value={formData.specialRequests}
-        onChangeText={(value) => updateFormData('specialRequests', value)}
-        multiline
-        numberOfLines={3}
-        style={styles.section}
-        disabled={!isAvailable}
-      />
-
-      <View style={[styles.summary, { backgroundColor: colors.surface }]}>
-        <Text variant="small" style={styles.summaryTitle}>Booking Summary</Text>
-        
-        <View style={styles.summaryRow}>
-          <Text>Tickets ({formData.quantity} x ${event.price?.toFixed(2)})</Text>
-          <Text>${totals.subTotal.toFixed(2)}</Text>
+        {/* Contact Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Contact Information</Text>
+          
+          <Input
+            label="Full Name"
+            value={formData.contactInfo.fullName}
+            onChangeText={(value) => handleInputChange('contactInfo.fullName', value)}
+            placeholder="Enter your full name"
+            error={errors['contactInfo.fullName']}
+            leftIcon={<Ionicons name="person" size={20} color={colors.textSecondary} />}
+            style={styles.input}
+          />
+          
+          <Input
+            label="Email Address"
+            value={formData.contactInfo.email}
+            onChangeText={(value) => handleInputChange('contactInfo.email', value)}
+            placeholder="Enter your email"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            error={errors['contactInfo.email']}
+            leftIcon={<Ionicons name="mail" size={20} color={colors.textSecondary} />}
+            style={styles.input}
+          />
+          
+          <Input
+            label="Phone Number"
+            value={formData.contactInfo.phone}
+            onChangeText={(value) => handleInputChange('contactInfo.phone', value)}
+            placeholder="Enter your phone number"
+            keyboardType="phone-pad"
+            error={errors['contactInfo.phone']}
+            leftIcon={<Ionicons name="call" size={20} color={colors.textSecondary} />}
+            style={styles.input}
+          />
         </View>
-        
-        <View style={styles.summaryRow}>
-          <Text>Tax (15%)</Text>
-          <Text>${totals.tax.toFixed(2)}</Text>
+
+        {/* Special Requests */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Special Requests (Optional)</Text>
+          <Input
+            value={formData.specialRequests}
+            onChangeText={(value) => handleInputChange('specialRequests', value)}
+            placeholder="Any special requirements or requests..."
+            multiline
+            numberOfLines={4}
+            style={styles.textArea}
+          />
         </View>
-        
-        <View style={styles.summaryRow}>
-          <Text>Service Fee</Text>
-          <Text>${totals.fees.toFixed(2)}</Text>
-        </View>
-        
-        <View style={[styles.summaryRow, styles.totalRow]}>
-          <Text variant="small">Total</Text>
-          <Text variant="small" style={styles.totalAmount}>
-            ${totals.total.toFixed(2)}
+
+        {/* Price Breakdown */}
+        {renderPriceBreakdown()}
+
+        {/* Terms & Conditions */}
+        <View style={styles.termsSection}>
+          <Text style={styles.termsText}>
+            By completing this booking, you agree to our{' '}
+            <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
+            <Text style={styles.termsLink}>Cancellation Policy</Text>.
           </Text>
         </View>
-      </View>
 
-      <Button
-        title={isAvailable ? "Continue to Payment" : "Not Available"}
-        onPress={handleSubmit}
-        loading={isLoading}
-        disabled={!isAvailable || isLoading}
-        fullWidth
-        style={styles.bookButton}
-      />
-
-      <View style={styles.note}>
-        <Text style={styles.noteText}>
-          • Free cancellation up to 24 hours before the event{'\n'}
-          • Tickets will be sent to your email{'\n'}
-          • Present QR code at entrance
-        </Text>
-      </View>
-    </ScrollView>
+        {/* Bottom Actions */}
+        <View style={styles.actions}>
+          <Button
+            title="Cancel"
+            variant="outline"
+            onPress={onCancel}
+            style={styles.actionButton}
+          />
+          <Button
+            title={`Book Now - ${formatCurrency(calculatedPrice.total, 'ETB')}`}
+            onPress={handleSubmit}
+            disabled={isLoading}
+            style={styles.actionButton}
+          />
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
   },
-  title: {
-    marginBottom: 24,
-    textAlign: 'center',
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  eventInfo: {
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 16,
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
   },
-  eventDate: {
-    marginTop: 4,
-    opacity: 0.8,
-    fontSize: 14,
-  },
-  eventLocation: {
-    marginTop: 2,
-    opacity: 0.6,
-    fontSize: 14,
-  },
-  eventPrice: {
-    marginTop: 4,
+  headerSubtitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  availabilityStatus: {
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  availabilityText: {
-    fontWeight: '600',
-    textAlign: 'center',
+    opacity: 0.6,
   },
   section: {
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  summary: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
   },
-  summaryTitle: {
+  detailsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 12,
+  },
+  detailText: {
+    fontSize: 16,
+    opacity: 0.8,
+  },
+  input: {
     marginBottom: 16,
   },
-  summaryRow: {
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  priceSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  priceLabel: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  priceValue: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#dee2e6',
+    borderBottomWidth: 0,
     paddingTop: 12,
-    marginTop: 8,
+    marginTop: 4,
   },
-  totalAmount: {
-    color: '#4CAF50',
+  totalLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  bookButton: {
-    marginBottom: 16,
+  totalValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#34C759',
   },
-  note: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
+  termsSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  noteText: {
-    fontSize: 12,
-    opacity: 0.7,
-    lineHeight: 16,
+  termsText: {
+    fontSize: 14,
+    opacity: 0.6,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  termsLink: {
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  actions: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 32,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
   },
 });

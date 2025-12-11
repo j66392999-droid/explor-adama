@@ -14,13 +14,42 @@ export default function AppLayout() {
         <ResponsiveProvider>
           <ThemeProvider>
             <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
+              {/* Top-level app groups and primary screens only. Keep this list in sync with files under `app/` */}
+              <Stack.Screen name="index" />
+              <Stack.Screen name="tab-navigator" />
+              <Stack.Screen name="(app)" />
               <Stack.Screen name="(auth)" />
-              <Stack.Screen name="cart" />
-              <Stack.Screen name="services" />
-              <Stack.Screen name="orders" />
-              <Stack.Screen name="blog" />
-              <Stack.Screen name="events" />
+              
+              {/* Booking Screens */}
+              <Stack.Screen name="BookingConfirmation" />
+              <Stack.Screen name="BookingDetail" />
+              <Stack.Screen name="BookingHistory" />
+              
+              {/* Payment Screens */}
+              <Stack.Screen 
+                name="Payment" 
+                options={{ 
+                  presentation: 'modal' // Optional: shows as modal
+                }}
+              />
+              
+              <Stack.Screen 
+                name="PaymentSuccess" 
+                options={{ 
+                  presentation: 'modal'
+                }}
+              />
+              
+              {/* Add other screens as needed */}
+              <Stack.Screen name="Booking" />
+              
+              {/* Ticket screens - these will be automatically matched with app/(screens)/ */}
+              <Stack.Screen name="Tickets" />
+              <Stack.Screen name="TicketDetail" />
+              <Stack.Screen 
+                name="QRScanner" 
+                options={{ presentation: 'modal' }}
+              />
             </Stack>
           </ThemeProvider>
         </ResponsiveProvider>

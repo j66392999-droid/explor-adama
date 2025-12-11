@@ -43,13 +43,37 @@ export interface RequestConfig extends AxiosRequestConfig {
 
 export class ApiClient {
   clearAuthToken() {
-    throw new Error('Method not implemented.');
+    // Clear any stored tokens and remove Authorization header from axios instance
+    try {
+      secureStorage.clearAuth();
+    } catch {}
+    try {
+      if (this.client.defaults && this.client.defaults.headers) {
+        // Remove Authorization header from default headers if present
+        // headers can be a function or object; guard accordingly
+        const headers: any = this.client.defaults.headers as any;
+        if (headers && typeof headers === 'object') {
+          // Common header containers are headers.common
+          if (headers.common && headers.common.Authorization) delete headers.common.Authorization;
+          if (headers.Authorization) delete headers.Authorization;
+        }
+      }
+    } catch {}
   }
   getBaseURL(): any {
-    throw new Error('Method not implemented.');
+    // Return the configured baseURL from the underlying axios instance
+    try {
+      return (this.client && this.client.defaults && (this.client.defaults as any).baseURL) || undefined;
+    } catch {
+      return undefined;
+    }
   }
   setBaseURL(arg0: any) {
-    throw new Error('Method not implemented.');
+    try {
+      if (this.client && this.client.defaults) {
+        (this.client.defaults as any).baseURL = arg0;
+      }
+    } catch {}
   }
   private client: AxiosInstance;
   private isRefreshing = false;

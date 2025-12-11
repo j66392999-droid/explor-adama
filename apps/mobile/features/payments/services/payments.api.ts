@@ -1,49 +1,80 @@
-import type { Payment, PaymentMethod, PaymentStatus } from '../types/payments.types';
+// features/payments/services/payments.api.ts - CONNECTS TO YOUR BACKEND
+import { apiClient } from '../../../shared/services/api/client';
+import {
+  Payment,
+  PaymentIntent,
+  ChapaVerifyResponse
+} from '../types/payments.types';
 
-// Simple in-memory simulation for payments
-let paymentStore: Record<string, Payment> = {};
-const paymentMethodsStore: PaymentMethod[] = [
-  { id: 'stripe', name: 'Credit & Debit Card (Stripe)', provider: 'stripe', icon: 'credit-card' },
-  { id: 'chapa', name: 'Chapa', provider: 'chapa', icon: 'wallet' },
-  { id: 'mobile_money', name: 'Mobile Money', provider: 'mobile_money', icon: 'phone' },
-];
+export interface InitPaymentRequest {
+  userId: string;
+  bookingId: string;
+  amount: number;
+  currency?: string;
+  description?: string;
+  returnUrl?: string;
+}
 
-const randomId = () => String(Date.now() + Math.floor(Math.random() * 1000));
+export interface InitPaymentResponse {
+  payment: Payment;
+  providerData: any;
+  checkoutUrl: string;
+}
 
-export const listPaymentMethods = async (): Promise<PaymentMethod[]> => {
-  return new Promise((resolve) => setTimeout(() => resolve(paymentMethodsStore), 120));
+export const paymentsApi = {
+  /**
+   * Initialize payment with your backend
+   * Calls: POST /api/payments/init
+   */
+  async initializePayment(data: InitPaymentRequest): Promise<InitPaymentResponse> {
+    const res = await apiClient.post<InitPaymentResponse>('/payments/init', data);
+    return res.data!;
+  },
+
+  /**
+   * Verify payment using your backend
+   * Calls: GET /api/payments/verify/:ref
+   */
+  async verifyPayment(ref: string): Promise<ChapaVerifyResponse> {
+    const res = await apiClient.get<ChapaVerifyResponse>(`/payments/verify/${ref}`);
+    return res.data!;
+  },
+
+  /**
+   * Get payment by ID
+   */
+  async getPaymentById(paymentId: string): Promise<Payment> {
+    const res = await apiClient.get<Payment>(`/payments/${paymentId}`);
+    return res.data!;
+  },
+
+  /**
+   * Get payment by booking ID
+   */
+  async getPaymentByBookingId(bookingId: string): Promise<Payment> {
+    const res = await apiClient.get<Payment>(`/payments/booking/${bookingId}`);
+    return res.data!;
+  },
+
+  /**
+   * Get user payment history
+   */
+  async getUserPayments(userId: string, page = 1, limit = 20): Promise<Payment[]> {
+    const res = await apiClient.get<Payment[]>(`/payments/user/${userId}`, {
+      params: { page, limit }
+    });
+    return res.data!;
+  },
+
+  /**
+   * Create payment intent (if you need client-side token)
+   */
+  async createPaymentIntent(bookingId: string, amount: number): Promise<PaymentIntent> {
+    const res = await apiClient.post<PaymentIntent>('/payments/create-intent', {
+      bookingId,
+      amount,
+      currency: 'ETB'
+    });
+    return res.data!;
+  }
 };
-
-export const createPayment = async (amount: number, currency = 'USD', methodId?: string, metadata?: any): Promise<Payment> => {
-  const id = randomId();
-  const payment: Payment = {
-    id,
-    amount,
-    currency,
-    methodId,
-    status: 'PENDING',
-    createdAt: new Date().toISOString(),
-    metadata,
-  };
-  paymentStore[id] = payment;
-
-  // Simulate async processing and eventually mark success
-  setTimeout(() => {
-    if (paymentStore[id]) paymentStore[id].status = Math.random() > 0.1 ? 'SUCCESS' : 'FAILED';
-  }, 1200);
-
-  return new Promise((resolve) => setTimeout(() => resolve(payment), 150));
-};
-
-export const getPaymentStatus = async (id: string): Promise<PaymentStatus | null> => {
-  const p = paymentStore[id];
-  return new Promise((resolve) => setTimeout(() => resolve(p?.status ?? null), 100));
-};
-
-export const refundPayment = async (id: string): Promise<boolean> => {
-  if (!paymentStore[id]) return false;
-  paymentStore[id].status = 'CANCELLED';
-  return new Promise((resolve) => setTimeout(() => resolve(true), 180));
-};
-
-export default { listPaymentMethods, createPayment, getPaymentStatus, refundPayment };

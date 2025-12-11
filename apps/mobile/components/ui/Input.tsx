@@ -11,7 +11,7 @@ import { useTheme } from '../../shared/hooks/ui/useTheme';
 import responsive from '../../shared/utils/responsive';
 
 interface InputProps {
-  value: string;
+  value?: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
   label?: string;
@@ -21,6 +21,9 @@ interface InputProps {
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   autoComplete?: any;
+  autoCorrect?: boolean;
+  maxLength?: number;
+  leftText?: string;
   multiline?: boolean;
   numberOfLines?: number;
   disabled?: boolean;
@@ -43,14 +46,17 @@ export const Input: React.FC<InputProps> = ({
   keyboardType = 'default',
   autoCapitalize = 'none',
   autoComplete,
+  autoCorrect = true,
   multiline = false,
   numberOfLines = 1,
   disabled = false,
   leftIcon,
+  leftText,
   rightIcon,
   onRightIconPress,
   containerStyle,
   style,
+  maxLength,
   onSubmitEditing,
 }) => {
   const { colors } = useTheme();
@@ -82,13 +88,18 @@ export const Input: React.FC<InputProps> = ({
             )}
           </View>
         )}
+        {leftText && (
+          <View style={styles.leftText}>
+            <Text style={{ color: colors.text + '80' }}>{leftText}</Text>
+          </View>
+        )}
         
         <TextInput
           style={[
             styles.input,
             {
               color: colors.text,
-              paddingLeft: leftIcon ? responsive.moderateScale(40) : responsive.moderateScale(16),
+              paddingLeft: leftIcon ? responsive.moderateScale(40) : leftText ? responsive.moderateScale(28) : responsive.moderateScale(16),
               paddingRight: rightIcon ? responsive.moderateScale(40) : responsive.moderateScale(16),
             },
             multiline && styles.multiline,
@@ -102,6 +113,8 @@ export const Input: React.FC<InputProps> = ({
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
+          autoCorrect={autoCorrect}
+          maxLength={maxLength}
           multiline={multiline}
           numberOfLines={multiline ? numberOfLines : 1}
           editable={!disabled}
@@ -161,6 +174,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: responsive.moderateScale(12),
     zIndex: 1,
+  },
+  leftText: {
+    position: 'absolute',
+    left: responsive.moderateScale(12),
+    zIndex: 1,
+    justifyContent: 'center',
   },
   rightIcon: {
     position: 'absolute',

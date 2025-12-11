@@ -198,16 +198,16 @@ export const PlaceCard: React.FC<PlaceCardProps> = ({
             {place.description}
           </Text>
         )}
-        // In PlaceCard.tsx - Add tags display:
-{place.tags && place.tags.length > 0 && (
-  <View style={styles.tagsContainer}>
-    {place.tags.slice(0, 3).map((tag, index) => (
-      <View key={index} style={styles.tag}>
-        <Text style={styles.tagText}>#{tag.tag.name}</Text>
-      </View>
-    ))}
-  </View>
-)}
+        {/* Tags */}
+        {place.tags && place.tags.length > 0 && (
+          <View style={styles.tagsContainer}>
+            {place.tags.slice(0, 3).map((tag, index) => (
+              <View key={index} style={styles.tag}>
+                <Text style={styles.tagText}>#{tag.tag.name}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.metaInfo}>
           <View style={styles.ratingContainer}>

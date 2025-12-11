@@ -3,6 +3,7 @@ import { TouchableOpacity, Image, StyleSheet, View, Animated } from 'react-nativ
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppSelector } from '../../shared/hooks/state/useAppSelector';
 import { useRouter } from 'expo-router';
+import useFallbackNavigation from '../../shared/hooks/navigation/useFallbackNavigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useBottomTabs } from '../../shared/hooks/ui/useBottomTabs';
 
@@ -10,29 +11,23 @@ const TopProfileButton: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAppSelector((s) => s.auth);
+  // Call hooks unconditionally (avoid early returns before hooks)
+  const bottomTabsCtx = useBottomTabs();
+  const nav = useFallbackNavigation();
 
   // Hide the floating profile button when already on the profile screen
   const path = (router as any).pathname || (router as any).asPath || '';
   if (typeof path === 'string' && path.includes('profile')) return null;
 
   // Read bottom-tabs animated value and drive top button hide/show
-  let translateY: any = 0;
-  let opacity: any = 1;
-  try {
-    const ctx = useBottomTabs();
-    const av = ctx?.animatedValue ?? new Animated.Value(0);
-    translateY = av.interpolate({ inputRange: [0, 1], outputRange: [0, -36] });
-    opacity = av.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
-  } catch (e) {
-    // if provider not available, keep visible
-    translateY = 0;
-    opacity = 1;
-  }
+  const av = bottomTabsCtx?.animatedValue ?? new Animated.Value(0);
+  const translateY: any = av.interpolate ? av.interpolate({ inputRange: [0, 1], outputRange: [0, -36] }) : 0;
+  const opacity: any = av.interpolate ? av.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }) : 1;
 
   return (
     <Animated.View pointerEvents="box-none" style={[styles.container, { top: insets.top || 12, transform: [{ translateY }], opacity }]}> 
       <TouchableOpacity
-        onPress={() => router.push('/profile')}
+        onPress={() => nav?.navigate('Profile')}
         style={styles.button}
         activeOpacity={0.8}
       >

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
+import useFallbackNavigation from '../../../shared/hooks/navigation/useFallbackNavigation';
 import {
   View,
   ScrollView,
@@ -17,6 +18,7 @@ import { useTheme } from '../../../shared/hooks/ui/useTheme';
 
 export const LoginScreen: React.FC = () => {
   const router = useRouter();
+  const nav = useFallbackNavigation();
   const { colors } = useTheme();
 
   return (
@@ -68,7 +70,7 @@ export const LoginScreen: React.FC = () => {
             <Button
               title="Sign Up"
               variant="ghost"
-              onPress={() => router.push('/(auth)/register')}
+              onPress={() => nav?.navigate('Register')}
             />
           </View>
         </ScrollView>

@@ -1,38 +1,28 @@
-export type PaymentProvider = 'stripe' | 'chapa' | 'paypal' | 'mobile_money' | 'card' | string;
-
-export interface PaymentMethod {
-	id: string;
-	name: string;
-	provider: PaymentProvider;
-	details?: Record<string, any>;
-	icon?: string;
-}
-
-export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
-
+// features/payments/types/payments.types.ts
 export interface Payment {
-	id: string;
-	amount: number;
-	currency?: string;
-	methodId?: string;
-	status: PaymentStatus;
-	createdAt: string;
-	metadata?: Record<string, any>;
+  id: string;
+  userId: string;
+  bookingId: string;
+  provider: 'CHAPA' | 'STRIPE' | 'MANUAL';
+  providerTransactionId?: string;
+  amount: number;
+  currency: string;
+  status: 'PENDING' | 'INITIATED' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
+  metadata?: any;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface InvoiceItem {
-	id: string;
-	title: string;
-	price: number;
-	quantity?: number;
+export interface PaymentIntent {
+  id: string;
+  clientSecret?: string;
+  amount: number;
+  currency: string;
+  status: string;
 }
 
-export interface Invoice {
-	id: string;
-	items: InvoiceItem[];
-	total: number;
-	currency?: string;
+export interface ChapaVerifyResponse {
+  status: string;
+  message?: string;
+  data?: any;
 }
-
-export default Payment;
-

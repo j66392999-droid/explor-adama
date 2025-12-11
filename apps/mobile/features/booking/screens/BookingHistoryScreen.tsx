@@ -1,218 +1,222 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
-  FlatList,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { Text } from '../../../components/ui/Typography/Text';
 import { Button } from '../../../components/ui/Button';
 import { Loading } from '../../../components/ui/Loading';
-import { ErrorState } from '../../../components/feedback/ErrorState';
+import { EmptyState } from '../../../components/feedback/EmptyState';
+import { BookingCard } from '../components/BookingCard';
 import { useBooking } from '../hooks/useBooking';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
-import { EmptyState } from '../../../components/feedback/EmptyState';
-import { useHideOnScroll } from '../../../shared/hooks/ui/useBottomTabs';
+import { RootStackParamList } from '../../../types/navigation';
+import { formatDate } from '../../../shared/utils/formatters';
+import * as Haptics from 'expo-haptics';
 
-export const BookingHistoryScreen: React.FC = ({ navigation }: any) => {
+type BookingHistoryScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookingHistory'>;
+
+export const BookingHistoryScreen: React.FC = () => {
+  const navigation = useNavigation<BookingHistoryScreenNavigationProp>();
   const { colors } = useTheme();
-  const [activeFilter, setActiveFilter] = useState<'all' | 'upcoming' | 'past'>('all');
-  
+  const insets = useSafeAreaInsets();
+
   const {
     bookings,
+    upcomingBookings,
+    bookingPagination,
+    refreshBookings,
+    loadMoreBookings,
+    filterBookingsByStatus,
+    getTotalSpent,
     isLoading,
-    error,
-    getBookings,
   } = useBooking();
 
-  const { onScroll, scrollEventThrottle } = useHideOnScroll();
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'upcoming' | 'past' | 'cancelled'>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    getBookings();
-  }, []);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refreshBookings();
+    setRefreshing(false);
+  };
 
-  const filteredBookings = bookings?.filter(booking => {
-    const eventDate = new Date(booking.event.date);
-    const now = new Date();
-    
+  const handleFilterChange = (filter: typeof activeFilter) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveFilter(filter);
+    setShowFilters(false);
+  };
+
+  const handleBookingPress = (bookingId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    navigation.navigate('BookingDetail', { bookingId });
+  };
+
+  const handleCreateBooking = () => {
+    navigation.navigate('Booking', {});
+  };
+
+  const getFilteredBookings = () => {
     switch (activeFilter) {
       case 'upcoming':
-        return eventDate >= now;
+        return upcomingBookings;
       case 'past':
-        return eventDate < now;
-      default:
-        return true;
-    }
-  }) || [];
-
-  const renderBookingItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[styles.bookingCard, { backgroundColor: colors.surface }]}
-      onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
-    >
-      <View style={styles.bookingHeader}>
-        <Text variant="small" numberOfLines={2}>
-          {item.event.title}
-        </Text>
-        <View style={[
-          styles.statusBadge,
-          { backgroundColor: getStatusColor(item.status) }
-        ]}>
-          <Text style={styles.statusText}>
-            {item.status}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.bookingDetails}>
-        <View style={styles.detail}>
-          <Text style={styles.detailLabel}>Date</Text>
-          <Text style={styles.detailValue}>
-            {new Date(item.event.date).toLocaleDateString()}
-          </Text>
-        </View>
-        
-        <View style={styles.detail}>
-          <Text style={styles.detailLabel}>Tickets</Text>
-          <Text style={styles.detailValue}>
-            {item.quantity} {item.quantity === 1 ? 'ticket' : 'tickets'}
-          </Text>
-        </View>
-        
-        <View style={styles.detail}>
-          <Text style={styles.detailLabel}>Total</Text>
-          <Text style={styles.detailValue}>
-            ${item.total.toFixed(2)}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.bookingFooter}>
-        <Text style={styles.bookingId}>
-          Booking ID: {item.id.slice(0, 8).toUpperCase()}
-        </Text>
-        
-        <Button
-          title="View Details"
-          size="small"
-          variant="outline"
-          onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
-        />
-      </View>
-    </TouchableOpacity>
-  );
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'confirmed':
-        return '#4CAF50';
-      case 'pending':
-        return '#FF9800';
+        return bookings.filter(b => new Date(b.bookingDate) < new Date());
       case 'cancelled':
-        return '#F44336';
+        return filterBookingsByStatus('CANCELLED');
       default:
-        return '#666';
+        return bookings;
     }
   };
 
-  if (isLoading) {
-    return <Loading />;
-  }
-
-  if (error) {
-    return (
-      <ErrorState
-        message="Failed to load bookings"
-        onRetry={getBookings}
+  const renderHeader = () => (
+    <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+      <Button
+        title="Back"
+        variant="ghost"
+        onPress={() => navigation.goBack()}
+        leftIcon={<Ionicons name="arrow-back" size={20} />}
+        style={styles.backButton}
       />
+      
+      <Text style={styles.headerTitle}>My Bookings</Text>
+      
+      <TouchableOpacity onPress={() => setShowFilters(!showFilters)}>
+        <Ionicons name="filter" size={24} color={colors.text} />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderStats = () => (
+    <View style={[styles.statsContainer, { backgroundColor: colors.surface }]}>
+      <View style={styles.stat}>
+        <Text style={styles.statNumber}>{bookings.length}</Text>
+        <Text style={styles.statLabel}>Total Bookings</Text>
+      </View>
+      
+      <View style={styles.stat}>
+        <Text style={styles.statNumber}>{upcomingBookings.length}</Text>
+        <Text style={styles.statLabel}>Upcoming</Text>
+      </View>
+      
+      <View style={styles.stat}>
+        <Text style={styles.statNumber}>
+          ETB {getTotalSpent().toLocaleString()}
+        </Text>
+        <Text style={styles.statLabel}>Total Spent</Text>
+      </View>
+    </View>
+  );
+
+  const renderFilters = () => (
+    <View style={[styles.filtersContainer, { backgroundColor: colors.surface }]}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        {(['all', 'upcoming', 'past', 'cancelled'] as const).map((filter) => (
+          <TouchableOpacity
+            key={filter}
+            style={[
+              styles.filterButton,
+              activeFilter === filter && [
+                styles.activeFilter,
+                { backgroundColor: colors.primary },
+              ],
+            ]}
+            onPress={() => handleFilterChange(filter)}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                activeFilter === filter && styles.activeFilterText,
+              ]}
+            >
+              {filter.charAt(0).toUpperCase() + filter.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+
+  const renderEmptyState = () => (
+    <EmptyState
+      title="No bookings yet"
+      message="Start exploring amazing experiences and make your first booking!"
+      icon="🎟️"
+      action={{
+        label: 'Explore Events',
+        onPress: handleCreateBooking,
+      }}
+    />
+  );
+
+  const renderBookings = () => {
+    const filteredBookings = getFilteredBookings();
+    
+    if (filteredBookings.length === 0) {
+      return renderEmptyState();
+    }
+
+    return (
+      <View style={styles.bookingsList}>
+        {filteredBookings.map((booking) => (
+          <BookingCard
+            key={booking.id}
+            booking={booking}
+            onPress={() => handleBookingPress(booking.id)}
+          />
+        ))}
+        
+        {bookingPagination.hasNext && (
+          <Button
+            title="Load More"
+            variant="outline"
+            onPress={loadMoreBookings}
+            loading={bookingPagination.isLoading}
+            style={styles.loadMoreButton}
+          />
+        )}
+      </View>
     );
+  };
+
+  if (isLoading && bookings.length === 0) {
+    return <Loading message="Loading your bookings..." />;
   }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Filter Tabs */}
-      <View style={styles.filterTabs}>
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            activeFilter === 'all' && [styles.activeFilterTab, { backgroundColor: colors.primary }],
-          ]}
-          onPress={() => setActiveFilter('all')}
-        >
-          <Text
-            style={[
-              styles.filterTabText,
-              activeFilter === 'all' && styles.activeFilterTabText,
-            ]}
-          >
-            All ({bookings?.length || 0})
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            activeFilter === 'upcoming' && [styles.activeFilterTab, { backgroundColor: colors.primary }],
-          ]}
-          onPress={() => setActiveFilter('upcoming')}
-        >
-          <Text
-            style={[
-              styles.filterTabText,
-              activeFilter === 'upcoming' && styles.activeFilterTabText,
-            ]}
-          >
-            Upcoming
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[
-            styles.filterTab,
-            activeFilter === 'past' && [styles.activeFilterTab, { backgroundColor: colors.primary }],
-          ]}
-          onPress={() => setActiveFilter('past')}
-        >
-          <Text
-            style={[
-              styles.filterTabText,
-              activeFilter === 'past' && styles.activeFilterTabText,
-            ]}
-          >
-            Past
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Bookings List */}
-      {filteredBookings.length === 0 ? (
-        <EmptyState
-          title="No bookings found"
-          message={
-            activeFilter === 'all' 
-              ? "You haven't made any bookings yet"
-              : `No ${activeFilter} bookings found`
-          }
-          icon="calendar"
-          action={
-            activeFilter === 'all' ? {
-              label: 'Explore Events',
-              onPress: () => navigation.navigate('Home'),
-            } : undefined
-          }
-        />
-      ) : (
-        <FlatList
-          data={filteredBookings}
-          renderItem={renderBookingItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onScroll={onScroll}
-          scrollEventThrottle={scrollEventThrottle}
-        />
-      )}
+      {renderHeader()}
+      
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[colors.primary]}
+          />
+        }
+      >
+        {renderStats()}
+        {renderFilters()}
+        {renderBookings()}
+      </ScrollView>
+      
+      {/* Create Booking FAB */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        onPress={handleCreateBooking}
+      >
+        <Ionicons name="add" size={24} color="white" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -221,82 +225,101 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  filterTabs: {
+  header: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginRight: 8,
     alignItems: 'center',
-  },
-  activeFilterTab: {},
-  filterTabText: {
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  activeFilterTabText: {
-    color: 'white',
-  },
-  listContent: {
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  bookingCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+  backButton: {
+    minWidth: 80,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginTop: 20,
+    padding: 20,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  bookingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  bookingDetails: {
-    marginBottom: 12,
-  },
-  detail: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  detailLabel: {
-    opacity: 0.7,
-    fontSize: 14,
-  },
-  detailValue: {
-    fontWeight: '500',
-    fontSize: 14,
-  },
-  bookingFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  stat: {
+    flex: 1,
     alignItems: 'center',
   },
-  bookingId: {
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  statLabel: {
     fontSize: 12,
-    opacity: 0.5,
+    opacity: 0.6,
+    textAlign: 'center',
+  },
+  filtersContainer: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  filterButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginHorizontal: 8,
+  },
+  activeFilter: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '500',
+    opacity: 0.7,
+  },
+  activeFilterText: {
+    color: 'white',
+    opacity: 1,
+    fontWeight: '600',
+  },
+  bookingsList: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 80,
+  },
+  loadMoreButton: {
+    marginTop: 16,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });

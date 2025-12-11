@@ -1,52 +1,74 @@
-import { AppNotification } from '../types/notifications.types';
+// features/notifications/services/notifications.api.ts
+import { apiClient } from '../../../shared/services/api/client';
+import { Notification, NotificationGroup, NotificationFilter } from '../types/notifications.types';
 
-let notificationsStore: Record<string, AppNotification> = {
-	'1': { id: '1', title: 'Welcome', body: 'Thanks for joining.', read: false, createdAt: new Date().toISOString() },
-	'2': { id: '2', title: 'Update', body: 'We updated our terms.', read: false, createdAt: new Date().toISOString() },
+export const notificationsApi = {
+  /**
+   * GET /api/notifications - Get notifications feed (X-style)
+   */
+  async getNotifications(
+    page = 1,
+    limit = 20,
+    filter?: NotificationFilter
+  ): Promise<{ notifications: Notification[]; groups: NotificationGroup[] }> {
+    const params: any = { page, limit };
+    if (filter && filter !== 'all') params.filter = filter;
+    
+    const res = await apiClient.get<{ notifications: Notification[]; groups: NotificationGroup[] }>(
+      '/notifications',
+      { params }
+    );
+    return res.data!;
+  },
+
+  /**
+   * GET /api/notifications/unread/count - Get unread counts
+   */
+  async getUnreadCount(): Promise<Record<NotificationFilter, number>> {
+    const res = await apiClient.get<Record<NotificationFilter, number>>('/notifications/unread/count');
+    return res.data!;
+  },
+
+  /**
+   * POST /api/notifications/:id/read - Mark as read
+   */
+  async markAsRead(id: string): Promise<void> {
+    await apiClient.post(`/notifications/${id}/read`);
+  },
+
+  /**
+   * POST /api/notifications/read/all - Mark all as read
+   */
+  async markAllAsRead(): Promise<void> {
+    await apiClient.post('/notifications/read/all');
+  },
+
+  /**
+   * DELETE /api/notifications/:id - Delete notification
+   */
+  async deleteNotification(id: string): Promise<void> {
+    await apiClient.delete(`/notifications/${id}`);
+  },
+
+  /**
+   * POST /api/notifications/preferences - Update preferences
+   */
+  async updatePreferences(preferences: any): Promise<void> {
+    await apiClient.post('/notifications/preferences', preferences);
+  },
+
+  /**
+   * GET /api/notifications/preferences - Get preferences
+   */
+  async getPreferences(): Promise<any> {
+    const res = await apiClient.get('/notifications/preferences');
+    return res.data!;
+  },
+
+  /**
+   * POST /api/notifications/:id/interact - Interact with notification
+   */
+  async interact(id: string, action: 'like' | 'reply' | 'retweet'): Promise<void> {
+    await apiClient.post(`/notifications/${id}/interact`, { action });
+  },
 };
-
-export const fetchNotifications = async (): Promise<AppNotification[]> => {
-	return new Promise((resolve) => setTimeout(() => resolve(Object.values(notificationsStore).sort((a, b) => b.createdAt.localeCompare(a.createdAt))), 200));
-};
-
-export const markAsRead = async (id: string): Promise<void> => {
-	return new Promise((resolve) => {
-		setTimeout(() => {
-			if (notificationsStore[id]) notificationsStore[id].read = true;
-			resolve();
-		}, 150);
-	});
-};
-
-export const markAllAsRead = async (): Promise<void> => {
-	return new Promise((resolve) => {
-		setTimeout(() => {
-			Object.keys(notificationsStore).forEach((id) => (notificationsStore[id].read = true));
-			resolve();
-		}, 200);
-	});
-};
-
-export const removeNotification = async (id: string): Promise<void> => {
-	return new Promise((resolve) => {
-		setTimeout(() => {
-			delete notificationsStore[id];
-			resolve();
-		}, 150);
-	});
-};
-
-export const sendNotification = async (title: string, body?: string): Promise<AppNotification> => {
-	const newNotif: AppNotification = {
-		id: String(Date.now()),
-		title,
-		body,
-		createdAt: new Date().toISOString(),
-		read: false,
-	};
-	notificationsStore[newNotif.id] = newNotif;
-	return new Promise((resolve) => setTimeout(() => resolve(newNotif), 200));
-};
-
-export default { fetchNotifications, markAsRead, markAllAsRead, removeNotification, sendNotification };
-

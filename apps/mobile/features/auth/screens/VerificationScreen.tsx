@@ -13,15 +13,15 @@ import { Button } from '../../../components/ui/Button';
 import { useTheme } from '../../../shared/hooks/ui/useTheme';
 
 type VerificationScreenProps = {
-  route: RouteProp<{ params: { email: string } }, 'params'>;
-  navigation: any;
+  route?: { params?: { email?: string } };
+  navigation?: any;
 };
 
 export const VerificationScreen: React.FC<VerificationScreenProps> = ({
   route,
   navigation,
 }) => {
-  const { email } = route.params;
+  const email = route?.params?.email ?? '';
   const { colors } = useTheme();
   
   const [code, setCode] = useState(['', '', '', '', '', '']);

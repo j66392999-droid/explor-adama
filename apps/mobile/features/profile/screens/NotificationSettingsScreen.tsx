@@ -1,4 +1,4 @@
-import React from 'react';
+/**import React from 'react';
 import { View, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from '../../../components/ui/Typography/Text';
@@ -47,4 +47,4 @@ const styles = StyleSheet.create({
 
 export { NotificationSettingsScreen };
 export default NotificationSettingsScreen;
-
+**/

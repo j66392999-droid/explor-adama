@@ -5,8 +5,13 @@ import { useTheme } from '../../../shared/hooks/ui/useTheme';
 import { useFavorites } from '../hooks/useFavorites';
 
 interface FavoriteButtonProps {
-  itemId: string;
-  itemType: 'PLACE' | 'EVENT';
+  itemId?: string;
+  itemType?: 'PLACE' | 'EVENT';
+  /**
+   * Controlled favorite state. If provided, the button will render this state
+   * instead of deriving it from `useFavorites`.
+   */
+  isFavorite?: boolean;
   size?: 'small' | 'medium' | 'large';
   onToggle?: (isFavorite: boolean) => void;
 }
@@ -14,18 +19,26 @@ interface FavoriteButtonProps {
 export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   itemId,
   itemType,
+  isFavorite: controlledIsFavorite,
   size = 'medium',
   onToggle,
 }) => {
   const { colors } = useTheme();
-  const { isFavorite, toggleFavorite } = useFavorites();
-  
-  const isFavorited = isFavorite(itemId, itemType);
+  const { isFavorite: isFavoriteFn, toggleFavorite } = useFavorites();
+
+  const isFavorited = typeof controlledIsFavorite !== 'undefined'
+    ? controlledIsFavorite
+    : (itemId && itemType ? isFavoriteFn(itemId, itemType) : false);
   
   const handlePress = async () => {
     try {
-      await toggleFavorite(itemId, itemType);
-      onToggle?.(!isFavorited);
+      if (itemId && itemType) {
+        await toggleFavorite(itemId, itemType);
+        onToggle?.(!isFavorited);
+      } else {
+        // Controlled-only usage: just call the onToggle callback
+        onToggle?.(!isFavorited);
+      }
     } catch (error) {
       console.error('Failed to toggle favorite', error);
     }
